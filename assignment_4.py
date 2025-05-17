@@ -1,3 +1,16 @@
+"""
+Smart Fitness Management System (SFMS)
+ICT701 Assignment 4
+
+A comprehensive fitness tracking application with both GUI and Text interfaces.
+Features include user profiles, workout tracking, nutrition monitoring,
+goal setting, and performance analytics.
+
+Author: Emon
+Student ID: 20031890
+Date: October 2023
+"""
+
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import json
@@ -20,6 +33,10 @@ import re
 import hashlib
 
 class User:
+    """
+    User class that stores all user profile information and related health/fitness data.
+    Includes methods to convert to/from dictionary format for data storage.
+    """
     def __init__(self, username, password, name, age, gender, height, weight, goals=None):
         self.username = username
         self.password = password  # In production, this should be hashed
@@ -63,6 +80,10 @@ class User:
         return user
 
 class Workout:
+    """
+    Workout class to store details of individual workout sessions.
+    Tracks type, duration, calories, date and notes.
+    """
     def __init__(self, workout_type, duration, calories_burned, date, notes=""):
         self.workout_type = workout_type
         self.duration = duration  # in minutes
@@ -90,6 +111,10 @@ class Workout:
         )
 
 class Meal:
+    """
+    Meal class to store nutrition information for tracked meals.
+    Tracks macro nutrients (proteins, carbs, fats), calories and date.
+    """
     def __init__(self, meal_type, name, calories, proteins, carbs, fats, date):
         self.meal_type = meal_type  # breakfast, lunch, dinner, snack
         self.name = name
@@ -123,6 +148,10 @@ class Meal:
         )
 
 class Goal:
+    """
+    Goal class to track fitness and health goals.
+    Stores goal details, deadlines and completion status.
+    """
     def __init__(self, goal_type, target_value, deadline, start_date=None):
         self.goal_type = goal_type  # e.g., 'weight_loss', 'distance_run', etc.
         self.target_value = target_value
@@ -151,6 +180,10 @@ class Goal:
         return goal
 
 class DataManager:
+    """
+    Data persistence layer responsible for loading/saving user data.
+    Provides CRUD operations for user management and data storage.
+    """
     def __init__(self, data_file="fitness_data.json"):
         self.data_file = data_file
         self.users = {}
@@ -214,6 +247,10 @@ class DataManager:
         return None
 
 class FitnessModeSelector:
+    """
+    Initial screen that allows users to select between GUI or text interface.
+    Serves as the entry point to the application.
+    """
     def __init__(self, root):  # root is now a mandatory argument
         self.root = root
         
@@ -261,6 +298,10 @@ class FitnessModeSelector:
         self.root.mainloop()
 
 class TextInterface:
+    """
+    Text-based command line interface for the Smart Fitness Management System.
+    Provides all functionality through a console-based menu system.
+    """
     def __init__(self):
         self.data_manager = DataManager()
         self.current_user = None
@@ -383,7 +424,1160 @@ class TextInterface:
         
         # Additional functionality would be implemented here
 
+    def workout_management(self):
+        """Manage workouts in text interface: view, add, edit, delete"""
+        while True:
+            print("\n----- Workout Management -----")
+            print("1. View All Workouts")
+            print("2. Log New Workout")
+            print("3. Edit Workout")
+            print("4. Delete Workout")
+            print("5. Return to Main Menu")
+            
+            choice = input("Enter your choice (1-5): ")
+            
+            if choice == "1":
+                self.view_workouts()
+            elif choice == "2":
+                self.add_workout()
+            elif choice == "3":
+                self.edit_workout()
+            elif choice == "4":
+                self.delete_workout()
+            elif choice == "5":
+                return
+            else:
+                print("Invalid choice. Please try again.")
+                
+    def view_workouts(self):
+        """Display all workouts for the current user"""
+        print("\n----- Your Workouts -----")
+        
+        if not self.current_user.workouts:
+            print("You haven't logged any workouts yet.")
+            return
+            
+        # Sort workouts by date, most recent first
+        workouts = sorted(self.current_user.workouts, 
+                        key=lambda w: datetime.datetime.strptime(w.date, "%Y-%m-%d"), 
+                        reverse=True)
+        
+        print(f"{'Date':<12} {'Type':<15} {'Duration (min)':<15} {'Calories':<10} {'Notes':<20}")
+        print("-" * 70)
+        
+        for i, workout in enumerate(workouts, 1):
+            # Truncate notes if too long
+            notes = workout.notes[:17] + "..." if len(workout.notes) > 20 else workout.notes
+            print(f"{workout.date:<12} {workout.workout_type:<15} {workout.duration:<15} {workout.calories_burned:<10} {notes:<20}")
+    
+    def add_workout(self):
+        """Add a new workout in text interface"""
+        print("\n----- Log New Workout -----")
+        
+        # Get workout details
+        date = input("Date (YYYY-MM-DD): ")
+        
+        # Validate date format
+        try:
+            datetime.datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD.")
+            return
+            
+        workout_type = input("Workout Type: ")
+        
+        try:
+            duration = int(input("Duration (minutes): "))
+            if duration <= 0:
+                print("Duration must be a positive number.")
+                return
+        except ValueError:
+            print("Duration must be a number.")
+            return
+            
+        try:
+            calories = int(input("Calories Burned: "))
+            if calories < 0:
+                print("Calories cannot be negative.")
+                return
+        except ValueError:
+            print("Calories must be a number.")
+            return
+            
+        notes = input("Notes (optional): ")
+        
+        # Create and add the workout
+        new_workout = Workout(workout_type, duration, calories, date, notes)
+        self.current_user.workouts.append(new_workout)
+        
+        # Save changes
+        self.data_manager.update_user(self.current_user)
+        print("Workout logged successfully!")
+    
+    def edit_workout(self):
+        """Edit an existing workout in text interface"""
+        if not self.current_user.workouts:
+            print("You haven't logged any workouts yet.")
+            return
+            
+        self.view_workouts()
+        
+        try:
+            index = int(input("\nEnter the number of the workout to edit (1, 2, etc.): ")) - 1
+            
+            # Sort workouts by date, most recent first (same as in view_workouts)
+            workouts = sorted(self.current_user.workouts, 
+                           key=lambda w: datetime.datetime.strptime(w.date, "%Y-%m-%d"), 
+                           reverse=True)
+            
+            if index < 0 or index >= len(workouts):
+                print("Invalid workout number.")
+                return
+                
+            workout = workouts[index]
+            
+            print(f"\nEditing workout on {workout.date} ({workout.workout_type})")
+            print("Leave field empty to keep current value.")
+            
+            # Get updated values
+            date_input = input(f"Date ({workout.date}): ")
+            date = date_input if date_input.strip() else workout.date
+            
+            # Validate date if changed
+            if date != workout.date:
+                try:
+                    datetime.datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    print("Invalid date format. Workout not updated.")
+                    return
+            
+            type_input = input(f"Workout Type ({workout.workout_type}): ")
+            workout_type = type_input if type_input.strip() else workout.workout_type
+            
+            duration_input = input(f"Duration ({workout.duration} minutes): ")
+            if duration_input.strip():
+                try:
+                    duration = int(duration_input)
+                    if duration <= 0:
+                        print("Duration must be a positive number. Workout not updated.")
+                        return
+                except ValueError:
+                    print("Duration must be a number. Workout not updated.")
+                    return
+            else:
+                duration = workout.duration
+                
+            calories_input = input(f"Calories Burned ({workout.calories_burned}): ")
+            if calories_input.strip():
+                try:
+                    calories = int(calories_input)
+                    if calories < 0:
+                        print("Calories cannot be negative. Workout not updated.")
+                        return
+                except ValueError:
+                    print("Calories must be a number. Workout not updated.")
+                    return
+            else:
+                calories = workout.calories_burned
+                
+            notes_input = input(f"Notes ({workout.notes}): ")
+            notes = notes_input if notes_input.strip() else workout.notes
+            
+            # Update workout
+            workout.date = date
+            workout.workout_type = workout_type
+            workout.duration = duration
+            workout.calories_burned = calories
+            workout.notes = notes
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Workout updated successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    def delete_workout(self):
+        """Delete a workout in text interface"""
+        if not self.current_user.workouts:
+            print("You haven't logged any workouts yet.")
+            return
+            
+        self.view_workouts()
+        
+        try:
+            index = int(input("\nEnter the number of the workout to delete (1, 2, etc.): ")) - 1
+            
+            # Sort workouts by date, most recent first (same as in view_workouts)
+            workouts = sorted(self.current_user.workouts, 
+                           key=lambda w: datetime.datetime.strptime(w.date, "%Y-%m-%d"), 
+                           reverse=True)
+            
+            if index < 0 or index >= len(workouts):
+                print("Invalid workout number.")
+                return
+                
+            workout = workouts[index]
+            
+            confirm = input(f"Are you sure you want to delete the {workout.workout_type} workout on {workout.date}? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Deletion cancelled.")
+                return
+                
+            # Remove workout
+            self.current_user.workouts.remove(workout)
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Workout deleted successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+            
+    def goal_management(self):
+        """Manage goals in text interface: view, add, edit, delete, mark as completed"""
+        while True:
+            print("\n----- Goal Management -----")
+            print("1. View All Goals")
+            print("2. Set New Goal")
+            print("3. Edit Goal")
+            print("4. Delete Goal")
+            print("5. Mark Goal as Completed")
+            print("6. Return to Main Menu")
+            
+            choice = input("Enter your choice (1-6): ")
+            
+            if choice == "1":
+                self.view_goals()
+            elif choice == "2":
+                self.add_goal()
+            elif choice == "3":
+                self.edit_goal()
+            elif choice == "4":
+                self.delete_goal()
+            elif choice == "5":
+                self.complete_goal()
+            elif choice == "6":
+                return
+            else:
+                print("Invalid choice. Please try again.")
+                
+    def view_goals(self):
+        """Display all goals for the current user"""
+        print("\n----- Your Goals -----")
+        
+        if not self.current_user.goals:
+            print("You haven't set any goals yet.")
+            return
+            
+        # Sort goals by deadline
+        goals = sorted(self.current_user.goals, 
+                     key=lambda g: datetime.datetime.strptime(g.deadline, "%Y-%m-%d"))
+        
+        print(f"{'#':<3} {'Goal Type':<15} {'Target':<15} {'Deadline':<12} {'Status':<10}")
+        print("-" * 60)
+        
+        for i, goal in enumerate(goals, 1):
+            status = "Completed" if goal.completed else "Active"
+            print(f"{i:<3} {goal.goal_type:<15} {goal.target_value:<15} {goal.deadline:<12} {status:<10}")
+    
+    def add_goal(self):
+        """Add a new goal in text interface"""
+        print("\n----- Set New Goal -----")
+        
+        # Get goal details
+        goal_type = input("Goal Type (e.g., Weight Loss, Distance Run): ")
+        target = input("Target Value (e.g., lose 5kg, run 10km): ")
+        
+        date = input("Deadline (YYYY-MM-DD): ")
+        
+        # Validate date format
+        try:
+            datetime.datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD.")
+            return
+            
+        # Create and add the goal
+        new_goal = Goal(goal_type, target, date)
+        self.current_user.goals.append(new_goal)
+        
+        # Save changes
+        self.data_manager.update_user(self.current_user)
+        print("Goal set successfully!")
+    
+    def edit_goal(self):
+        """Edit an existing goal in text interface"""
+        if not self.current_user.goals:
+            print("You haven't set any goals yet.")
+            return
+            
+        self.view_goals()
+        
+        try:
+            index = int(input("\nEnter the number of the goal to edit (1, 2, etc.): ")) - 1
+            
+            # Sort goals by deadline (same as in view_goals)
+            goals = sorted(self.current_user.goals, 
+                         key=lambda g: datetime.datetime.strptime(g.deadline, "%Y-%m-%d"))
+            
+            if index < 0 or index >= len(goals):
+                print("Invalid goal number.")
+                return
+                
+            goal = goals[index]
+            
+            print(f"\nEditing goal: {goal.goal_type} - {goal.target_value}")
+            print("Leave field empty to keep current value.")
+            
+            # Get updated values
+            type_input = input(f"Goal Type ({goal.goal_type}): ")
+            goal_type = type_input if type_input.strip() else goal.goal_type
+            
+            target_input = input(f"Target Value ({goal.target_value}): ")
+            target = target_input if target_input.strip() else goal.target_value
+            
+            date_input = input(f"Deadline ({goal.deadline}): ")
+            date = date_input if date_input.strip() else goal.deadline
+            
+            # Validate date if changed
+            if date != goal.deadline:
+                try:
+                    datetime.datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    print("Invalid date format. Goal not updated.")
+                    return
+                    
+            # Update goal
+            goal.goal_type = goal_type
+            goal.target_value = target
+            goal.deadline = date
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Goal updated successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    def delete_goal(self):
+        """Delete a goal in text interface"""
+        if not self.current_user.goals:
+            print("You haven't set any goals yet.")
+            return
+            
+        self.view_goals()
+        
+        try:
+            index = int(input("\nEnter the number of the goal to delete (1, 2, etc.): ")) - 1
+            
+            # Sort goals by deadline (same as in view_goals)
+            goals = sorted(self.current_user.goals, 
+                         key=lambda g: datetime.datetime.strptime(g.deadline, "%Y-%m-%d"))
+            
+            if index < 0 or index >= len(goals):
+                print("Invalid goal number.")
+                return
+                
+            goal = goals[index]
+            
+            confirm = input(f"Are you sure you want to delete the goal '{goal.goal_type} - {goal.target_value}'? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Deletion cancelled.")
+                return
+                
+            # Remove goal
+            self.current_user.goals.remove(goal)
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Goal deleted successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    def complete_goal(self):
+        """Mark a goal as completed in text interface"""
+        # Filter out already completed goals
+        active_goals = [g for g in self.current_user.goals if not g.completed]
+        
+        if not active_goals:
+            print("You don't have any active goals to mark as completed.")
+            return
+            
+        print("\n----- Mark Goal as Completed -----")
+        print(f"{'#':<3} {'Goal Type':<15} {'Target':<15} {'Deadline':<12}")
+        print("-" * 50)
+        
+        # Sort goals by deadline
+        active_goals = sorted(active_goals, 
+                            key=lambda g: datetime.datetime.strptime(g.deadline, "%Y-%m-%d"))
+        
+        for i, goal in enumerate(active_goals, 1):
+            print(f"{i:<3} {goal.goal_type:<15} {goal.target_value:<15} {goal.deadline:<12}")
+            
+        try:
+            index = int(input("\nEnter the number of the goal to mark as completed (1, 2, etc.): ")) - 1
+            
+            if index < 0 or index >= len(active_goals):
+                print("Invalid goal number.")
+                return
+                
+            goal = active_goals[index]
+            
+            # Mark as completed
+            goal.completed = True
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print(f"Goal '{goal.goal_type} - {goal.target_value}' marked as completed. Congratulations!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+            
+    def nutrition_management(self):
+        """Manage meals in text interface: view, log, edit, delete"""
+        while True:
+            print("\n----- Nutrition Management -----")
+            print("1. View Meal Log")
+            print("2. Log New Meal")
+            print("3. Edit Meal")
+            print("4. Delete Meal")
+            print("5. Nutrition Summary")
+            print("6. Return to Main Menu")
+            
+            choice = input("Enter your choice (1-6): ")
+            
+            if choice == "1":
+                self.view_meals()
+            elif choice == "2":
+                self.add_meal()
+            elif choice == "3":
+                self.edit_meal()
+            elif choice == "4":
+                self.delete_meal()
+            elif choice == "5":
+                self.nutrition_summary()
+            elif choice == "6":
+                return
+            else:
+                print("Invalid choice. Please try again.")
+                
+    def view_meals(self):
+        """Display meals for the current user, optionally filtered by date"""
+        print("\n----- Meal Log -----")
+        
+        # Option to filter by date
+        filter_option = input("Filter by date? (y/n): ")
+        
+        if filter_option.lower() == 'y':
+            date = input("Enter date (YYYY-MM-DD): ")
+            try:
+                # Validate date format
+                datetime.datetime.strptime(date, "%Y-%m-%d")
+                # Filter meals
+                meals = [m for m in self.current_user.meals if m.date == date]
+            except ValueError:
+                print("Invalid date format. Showing all meals.")
+                meals = self.current_user.meals
+        else:
+            meals = self.current_user.meals
+            
+        if not meals:
+            print("No meals logged yet.")
+            return
+            
+        # Sort meals by date (newest first)
+        meals = sorted(meals, key=lambda m: (m.date, m.meal_type), reverse=True)
+        
+        print(f"{'#':<3} {'Date':<12} {'Meal Type':<10} {'Name':<20} {'Calories':<8} {'Protein':<8} {'Carbs':<8} {'Fats':<8}")
+        print("-" * 80)
+        
+        for i, meal in enumerate(meals, 1):
+            name_display = meal.name[:17] + "..." if len(meal.name) > 20 else meal.name
+            print(f"{i:<3} {meal.date:<12} {meal.meal_type:<10} {name_display:<20} {meal.calories:<8} {meal.proteins:<8} {meal.carbs:<8} {meal.fats:<8}")
+    
+    def add_meal(self):
+        """Add a new meal in text interface"""
+        print("\n----- Log New Meal -----")
+        
+        # Get meal details
+        date = input("Date (YYYY-MM-DD): ")
+        
+        # Validate date format
+        try:
+            datetime.datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD.")
+            return
+            
+        # Meal type
+        print("\nMeal Type:")
+        print("1. Breakfast")
+        print("2. Lunch")
+        print("3. Dinner")
+        print("4. Snack")
+        
+        meal_choice = input("Choose meal type (1-4): ")
+        meal_types = {"1": "Breakfast", "2": "Lunch", "3": "Dinner", "4": "Snack"}
+        
+        if meal_choice not in meal_types:
+            print("Invalid choice. Using 'Other' as meal type.")
+            meal_type = "Other"
+        else:
+            meal_type = meal_types[meal_choice]
+            
+        name = input("Meal Name: ")
+        
+        try:
+            calories = int(input("Calories: "))
+            if calories < 0:
+                print("Calories cannot be negative.")
+                return
+        except ValueError:
+            print("Calories must be a number.")
+            return
+            
+        try:
+            proteins = float(input("Protein (g): "))
+            if proteins < 0:
+                print("Protein cannot be negative.")
+                return
+        except ValueError:
+            print("Protein must be a number.")
+            return
+            
+        try:
+            carbs = float(input("Carbohydrates (g): "))
+            if carbs < 0:
+                print("Carbohydrates cannot be negative.")
+                return
+        except ValueError:
+            print("Carbohydrates must be a number.")
+            return
+            
+        try:
+            fats = float(input("Fats (g): "))
+            if fats < 0:
+                print("Fats cannot be negative.")
+                return
+        except ValueError:
+            print("Fats must be a number.")
+            return
+            
+        # Create and add the meal
+        new_meal = Meal(meal_type, name, calories, proteins, carbs, fats, date)
+        self.current_user.meals.append(new_meal)
+        
+        # Save changes
+        self.data_manager.update_user(self.current_user)
+        print("Meal logged successfully!")
+    
+    def edit_meal(self):
+        """Edit an existing meal in text interface"""
+        if not self.current_user.meals:
+            print("You haven't logged any meals yet.")
+            return
+            
+        self.view_meals()
+        
+        try:
+            index = int(input("\nEnter the number of the meal to edit (1, 2, etc.): ")) - 1
+            
+            # Sort meals by date (newest first), same as in view_meals
+            meals = sorted(self.current_user.meals, 
+                         key=lambda m: (m.date, m.meal_type), 
+                         reverse=True)
+            
+            if index < 0 or index >= len(meals):
+                print("Invalid meal number.")
+                return
+                
+            meal = meals[index]
+            
+            print(f"\nEditing meal: {meal.name} ({meal.meal_type} on {meal.date})")
+            print("Leave field empty to keep current value.")
+            
+            # Get updated values
+            date_input = input(f"Date ({meal.date}): ")
+            date = date_input if date_input.strip() else meal.date
+            
+            # Validate date if changed
+            if date != meal.date:
+                try:
+                    datetime.datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    print("Invalid date format. Meal not updated.")
+                    return
+            
+            # Meal type
+            print("\nMeal Type:")
+            print(f"Current: {meal.meal_type}")
+            print("1. Breakfast")
+            print("2. Lunch")
+            print("3. Dinner")
+            print("4. Snack")
+            print("5. Keep current")
+            
+            meal_choice = input("Choose meal type (1-5): ")
+            meal_types = {"1": "Breakfast", "2": "Lunch", "3": "Dinner", "4": "Snack"}
+            
+            if meal_choice == "5":
+                meal_type = meal.meal_type
+            elif meal_choice in meal_types:
+                meal_type = meal_types[meal_choice]
+            else:
+                print("Invalid choice. Keeping current meal type.")
+                meal_type = meal.meal_type
+                
+            name_input = input(f"Meal Name ({meal.name}): ")
+            name = name_input if name_input.strip() else meal.name
+            
+            calories_input = input(f"Calories ({meal.calories}): ")
+            if calories_input.strip():
+                try:
+                    calories = int(calories_input)
+                    if calories < 0:
+                        print("Calories cannot be negative. Meal not updated.")
+                        return
+                except ValueError:
+                    print("Calories must be a number. Meal not updated.")
+                    return
+            else:
+                calories = meal.calories
+                
+            proteins_input = input(f"Protein ({meal.proteins} g): ")
+            if proteins_input.strip():
+                try:
+                    proteins = float(proteins_input)
+                    if proteins < 0:
+                        print("Protein cannot be negative. Meal not updated.")
+                        return
+                except ValueError:
+                    print("Protein must be a number. Meal not updated.")
+                    return
+            else:
+                proteins = meal.proteins
+                
+            carbs_input = input(f"Carbohydrates ({meal.carbs} g): ")
+            if carbs_input.strip():
+                try:
+                    carbs = float(carbs_input)
+                    if carbs < 0:
+                        print("Carbohydrates cannot be negative. Meal not updated.")
+                        return
+                except ValueError:
+                    print("Carbohydrates must be a number. Meal not updated.")
+                    return
+            else:
+                carbs = meal.carbs
+                
+            fats_input = input(f"Fats ({meal.fats} g): ")
+            if fats_input.strip():
+                try:
+                    fats = float(fats_input)
+                    if fats < 0:
+                        print("Fats cannot be negative. Meal not updated.")
+                        return
+                except ValueError:
+                    print("Fats must be a number. Meal not updated.")
+                    return
+            else:
+                fats = meal.fats
+                
+            # Update meal
+            meal.date = date
+            meal.meal_type = meal_type
+            meal.name = name
+            meal.calories = calories
+            meal.proteins = proteins
+            meal.carbs = carbs
+            meal.fats = fats
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Meal updated successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    def delete_meal(self):
+        """Delete a meal in text interface"""
+        if not self.current_user.meals:
+            print("You haven't logged any meals yet.")
+            return
+            
+        self.view_meals()
+        
+        try:
+            index = int(input("\nEnter the number of the meal to delete (1, 2, etc.): ")) - 1
+            
+            # Sort meals by date (newest first), same as in view_meals
+            meals = sorted(self.current_user.meals, 
+                         key=lambda m: (m.date, m.meal_type), 
+                         reverse=True)
+            
+            if index < 0 or index >= len(meals):
+                print("Invalid meal number.")
+                return
+                
+            meal = meals[index]
+            
+            confirm = input(f"Are you sure you want to delete '{meal.name}' from {meal.date}? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Deletion cancelled.")
+                return
+                
+            # Remove meal
+            self.current_user.meals.remove(meal)
+            
+            # Save changes
+            self.data_manager.update_user(self.current_user)
+            print("Meal deleted successfully!")
+            
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    def nutrition_summary(self):
+        """Display nutrition summary for a specific date or time range"""
+        print("\n----- Nutrition Summary -----")
+        
+        print("Time Range:")
+        print("1. Today")
+        print("2. Yesterday")
+        print("3. Last 7 days")
+        print("4. Last 30 days")
+        print("5. Specific date")
+        
+        choice = input("Choose time range (1-5): ")
+        
+        today = datetime.datetime.now().date()
+        
+        if choice == "1":
+            # Today
+            start_date = today
+            end_date = today
+            date_str = today.strftime("%Y-%m-%d")
+        elif choice == "2":
+            # Yesterday
+            start_date = today - datetime.timedelta(days=1)
+            end_date = start_date
+            date_str = start_date.strftime("%Y-%m-%d")
+        elif choice == "3":
+            # Last 7 days
+            start_date = today - datetime.timedelta(days=6)
+            end_date = today
+            date_str = f"{start_date.strftime('%Y-%m-%d')} to {today.strftime('%Y-%m-%d')}"
+        elif choice == "4":
+            # Last 30 days
+            start_date = today - datetime.timedelta(days=29)
+            end_date = today
+            date_str = f"{start_date.strftime('%Y-%m-%d')} to {today.strftime('%Y-%m-%d')}"
+        elif choice == "5":
+            # Specific date
+            date_str = input("Enter date (YYYY-MM-DD): ")
+            try:
+                start_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                end_date = start_date
+            except ValueError:
+                print("Invalid date format.")
+                return
+        else:
+            print("Invalid choice.")
+            return
+            
+        # Filter meals by date range
+        meals = [m for m in self.current_user.meals if 
+               start_date <= datetime.datetime.strptime(m.date, "%Y-%m-%d").date() <= end_date]
+        
+        if not meals:
+            print(f"No meals logged for {date_str}.")
+            return
+            
+        # Calculate totals
+        total_calories = sum(m.calories for m in meals)
+        total_proteins = sum(m.proteins for m in meals)
+        total_carbs = sum(m.carbs for m in meals)
+        total_fats = sum(m.fats for m in meals)
+        
+        num_days = (end_date - start_date).days + 1
+        
+        print(f"\nNutrition Summary for {date_str}")
+        print("-" * 40)
+        print(f"Total Meals: {len(meals)}")
+        print(f"Total Calories: {total_calories} kcal")
+        
+        if num_days > 1:
+            print(f"Average Daily Calories: {total_calories / num_days:.1f} kcal")
+            
+        print("\nMacronutrient Breakdown:")
+        print(f"Protein: {total_proteins:.1f} g ({total_proteins * 4:.1f} kcal)")
+        print(f"Carbohydrates: {total_carbs:.1f} g ({total_carbs * 4:.1f} kcal)")
+        print(f"Fats: {total_fats:.1f} g ({total_fats * 9:.1f} kcal)")
+        
+        # Calculate percentages if there are calories
+        if total_calories > 0:
+            protein_pct = (total_proteins * 4 / total_calories) * 100
+            carbs_pct = (total_carbs * 4 / total_calories) * 100
+            fats_pct = (total_fats * 9 / total_calories) * 100
+            
+            print("\nMacronutrient Percentages:")
+            print(f"Protein: {protein_pct:.1f}%")
+            print(f"Carbohydrates: {carbs_pct:.1f}%")
+            print(f"Fats: {fats_pct:.1f}%")
+            
+        # Show distribution by meal type
+        meal_types = {}
+        for meal in meals:
+            if meal.meal_type not in meal_types:
+                meal_types[meal.meal_type] = 0
+            meal_types[meal.meal_type] += meal.calories
+            
+        if len(meal_types) > 1:  # Only show if more than one meal type
+            print("\nCalorie Distribution by Meal Type:")
+            for meal_type, cals in meal_types.items():
+                pct = (cals / total_calories) * 100
+                print(f"{meal_type}: {cals} kcal ({pct:.1f}%)")
+                
+    def reports_management(self):
+        """Generate and view reports in text interface"""
+        while True:
+            print("\n----- Reports and Analytics -----")
+            print("1. Fitness Report")
+            print("2. Nutrition Report")
+            print("3. Performance Analysis")
+            print("4. Return to Main Menu")
+            
+            choice = input("Enter your choice (1-4): ")
+            
+            if choice == "1":
+                self.fitness_report()
+            elif choice == "2":
+                self.nutrition_report()
+            elif choice == "3":
+                self.performance_analysis()
+            elif choice == "4":
+                return
+            else:
+                print("Invalid choice. Please try again.")
+                
+    def fitness_report(self):
+        """Generate fitness report in text interface"""
+        print("\n----- Fitness Report -----")
+        
+        # Choose time range
+        print("Time Range:")
+        print("1. Last 7 Days")
+        print("2. Last 30 Days")
+        print("3. Last 3 Months")
+        print("4. Last Year")
+        print("5. All Time")
+        
+        choice = input("Choose time range (1-5): ")
+        
+        today = datetime.datetime.now().date()
+        
+        if choice == "1":
+            # Last 7 Days
+            start_date = today - datetime.timedelta(days=7)
+            time_range = "Last 7 Days"
+        elif choice == "2":
+            # Last 30 Days
+            start_date = today - datetime.timedelta(days=30)
+            time_range = "Last 30 Days"
+        elif choice == "3":
+            # Last 3 Months
+            start_date = today - datetime.timedelta(days=90)
+            time_range = "Last 3 Months"
+        elif choice == "4":
+            # Last Year
+            start_date = today - datetime.timedelta(days=365)
+            time_range = "Last Year"
+        elif choice == "5":
+            # All Time
+            start_date = datetime.datetime.strptime("2000-01-01", "%Y-%m-%d").date()
+            time_range = "All Time"
+        else:
+            print("Invalid choice.")
+            return
+            
+        # Filter workouts by date range
+        workouts = [w for w in self.current_user.workouts if 
+                   datetime.datetime.strptime(w.date, "%Y-%m-%d").date() >= start_date]
+        
+        if not workouts:
+            print(f"No workout data found for {time_range}.")
+            return
+            
+        # Calculate summary stats
+        total_workouts = len(workouts)
+        total_duration = sum(w.duration for w in workouts)
+        total_calories = sum(w.calories_burned for w in workouts)
+        avg_duration = total_duration / total_workouts if total_workouts > 0 else 0
+        
+        # Count workout types
+        workout_types = {}
+        for workout in workouts:
+            workout_types[workout.workout_type] = workout_types.get(workout.workout_type, 0) + 1
+            
+        most_common_type = max(workout_types.items(), key=lambda x: x[1])[0] if workout_types else "N/A"
+        
+        # Display summary
+        print(f"\nFitness Report ({time_range})")
+        print("-" * 40)
+        print(f"Total Workouts: {total_workouts}")
+        print(f"Total Duration: {total_duration} minutes")
+        print(f"Total Calories Burned: {total_calories} kcal")
+        print(f"Average Workout Duration: {avg_duration:.1f} minutes")
+        print(f"Most Common Workout Type: {most_common_type}")
+        
+        # Display workout type distribution
+        print("\nWorkout Type Distribution:")
+        for workout_type, count in sorted(workout_types.items(), key=lambda x: x[1], reverse=True):
+            percentage = (count / total_workouts) * 100
+            print(f"{workout_type}: {count} workouts ({percentage:.1f}%)")
+        
+        # Calculate trends if enough data
+        if len(workouts) >= 2:
+            print("\nTrend Analysis:")
+            
+            # Sort workouts by date
+            workouts_sorted = sorted(workouts, key=lambda w: w.date)
+            
+            # Calculate days between first and last workout
+            first_date = datetime.datetime.strptime(workouts_sorted[0].date, "%Y-%m-%d").date()
+            last_date = datetime.datetime.strptime(workouts_sorted[-1].date, "%Y-%m-%d").date()
+            days_tracking = (last_date - first_date).days + 1
+            
+            if days_tracking > 0:
+                weekly_avg = len(workouts) * 7 / days_tracking
+                print(f"Weekly Workout Average: {weekly_avg:.1f} workouts")
+            
+            # Split workouts into two halves to compare progress
+            midpoint = len(workouts_sorted) // 2
+            early_workouts = workouts_sorted[:midpoint]
+            recent_workouts = workouts_sorted[midpoint:]
+            
+            early_calories_avg = sum(w.calories_burned for w in early_workouts) / len(early_workouts)
+            recent_calories_avg = sum(w.calories_burned for w in recent_workouts) / len(recent_workouts)
+            
+            calories_change = ((recent_calories_avg - early_calories_avg) / early_calories_avg * 100
+                              if early_calories_avg > 0 else 0)
+            
+            print(f"Early Calories Burned Average: {early_calories_avg:.1f} kcal")
+            print(f"Recent Calories Burned Average: {recent_calories_avg:.1f} kcal")
+            print(f"Calories Burned Change: {calories_change:+.1f}%")
+            
+            early_duration_avg = sum(w.duration for w in early_workouts) / len(early_workouts)
+            recent_duration_avg = sum(w.duration for w in recent_workouts) / len(recent_workouts)
+            
+            duration_change = ((recent_duration_avg - early_duration_avg) / early_duration_avg * 100
+                              if early_duration_avg > 0 else 0)
+            
+            print(f"Early Duration Average: {early_duration_avg:.1f} minutes")
+            print(f"Recent Duration Average: {recent_duration_avg:.1f} minutes")
+            print(f"Duration Change: {duration_change:+.1f}%")
+    
+    def nutrition_report(self):
+        """Generate nutrition report in text interface"""
+        print("\n----- Nutrition Report -----")
+        
+        # Choose time range
+        print("Time Range:")
+        print("1. Last 7 Days")
+        print("2. Last 30 Days")
+        print("3. Last 3 Months")
+        print("4. All Time")
+        
+        choice = input("Choose time range (1-4): ")
+        
+        today = datetime.datetime.now().date()
+        
+        if choice == "1":
+            # Last 7 Days
+            start_date = today - datetime.timedelta(days=7)
+            time_range = "Last 7 Days"
+        elif choice == "2":
+            # Last 30 Days
+            start_date = today - datetime.timedelta(days=30)
+            time_range = "Last 30 Days"
+        elif choice == "3":
+            # Last 3 Months
+            start_date = today - datetime.timedelta(days=90)
+            time_range = "Last 3 Months"
+        elif choice == "4":
+            # All Time
+            start_date = datetime.datetime.strptime("2000-01-01", "%Y-%m-%d").date()
+            time_range = "All Time"
+        else:
+            print("Invalid choice.")
+            return
+            
+        # Filter meals by date range
+        meals = [m for m in self.current_user.meals if 
+               datetime.datetime.strptime(m.date, "%Y-%m-%d").date() >= start_date]
+        
+        if not meals:
+            print(f"No meal data found for {time_range}.")
+            return
+            
+        # Calculate summary stats
+        total_meals = len(meals)
+        total_calories = sum(m.calories for m in meals)
+        total_protein = sum(m.proteins for m in meals)
+        total_carbs = sum(m.carbs for m in meals)
+        total_fats = sum(m.fats for m in meals)
+        
+        avg_calories = total_calories / total_meals if total_meals > 0 else 0
+        avg_protein = total_protein / total_meals if total_meals > 0 else 0
+        avg_carbs = total_carbs / total_meals if total_meals > 0 else 0
+        avg_fats = total_fats / total_meals if total_meals > 0 else 0
+        
+        # Count unique dates to get number of days
+        unique_dates = len(set(m.date for m in meals))
+        avg_calories_day = total_calories / unique_dates if unique_dates > 0 else 0
+        
+        # Display summary
+        print(f"\nNutrition Report ({time_range})")
+        print("-" * 40)
+        print(f"Total Meals: {total_meals}")
+        print(f"Days with Recorded Meals: {unique_dates}")
+        print(f"Total Calories: {total_calories} kcal")
+        print(f"Average Daily Calories: {avg_calories_day:.1f} kcal")
+        print(f"Average Calories per Meal: {avg_calories:.1f} kcal")
+        
+        print("\nMacronutrients Summary:")
+        print(f"Total Protein: {total_protein:.1f} g")
+        print(f"Total Carbohydrates: {total_carbs:.1f} g")
+        print(f"Total Fats: {total_fats:.1f} g")
+        
+        print("\nAverage Macronutrients per Meal:")
+        print(f"Protein: {avg_protein:.1f} g")
+        print(f"Carbohydrates: {avg_carbs:.1f} g")
+        print(f"Fats: {avg_fats:.1f} g")
+        
+        # Macronutrient percentages
+        total_macro_calories = (total_protein * 4) + (total_carbs * 4) + (total_fats * 9)
+        
+        if total_macro_calories > 0:
+            protein_pct = (total_protein * 4 / total_macro_calories) * 100
+            carbs_pct = (total_carbs * 4 / total_macro_calories) * 100
+            fats_pct = (total_fats * 9 / total_macro_calories) * 100
+            
+            print("\nMacronutrient Distribution:")
+            print(f"Protein: {protein_pct:.1f}%")
+            print(f"Carbohydrates: {carbs_pct:.1f}%")
+            print(f"Fats: {fats_pct:.1f}%")
+        
+        # Meal type distribution
+        meal_types = {}
+        for meal in meals:
+            if meal.meal_type not in meal_types:
+                meal_types[meal.meal_type] = 0
+            meal_types[meal.meal_type] += meal.calories
+            
+        if len(meal_types) > 1:
+            print("\nCalorie Distribution by Meal Type:")
+            for meal_type, cals in sorted(meal_types.items(), key=lambda x: x[1], reverse=True):
+                percentage = (cals / total_calories) * 100
+                print(f"{meal_type}: {cals} kcal ({percentage:.1f}%)")
+    
+    def performance_analysis(self):
+        """Generate performance analysis report in text interface"""
+        print("\n----- Performance Analysis -----")
+        print("Analyzing your fitness data and goals...\n")
+        
+        # Check if user has any data
+        if not self.current_user.workouts and not self.current_user.goals:
+            print("No workout data or goals available for analysis.")
+            print("Log workouts and set goals to see your performance analysis.")
+            return
+            
+        # Analyze workout trends
+        if self.current_user.workouts:
+            # Sort workouts by date
+            workouts = sorted(self.current_user.workouts, 
+                            key=lambda w: datetime.datetime.strptime(w.date, "%Y-%m-%d"))
+            
+            # Calculate trends
+            if len(workouts) >= 2:
+                earliest_date = datetime.datetime.strptime(workouts[0].date, "%Y-%m-%d").date()
+                latest_date = datetime.datetime.strptime(workouts[-1].date, "%Y-%m-%d").date()
+                days_tracking = (latest_date - earliest_date).days + 1
+                
+                print("----- Workout Trend Analysis -----")
+                print(f"Days Tracking: {days_tracking} days")
+                
+                if days_tracking > 0:
+                    weekly_avg = len(workouts) * 7 / days_tracking
+                    print(f"Weekly Workout Average: {weekly_avg:.1f} workouts")
+                    
+                # Compare first and last workouts (or groups if many)
+                if len(workouts) > 5:
+                    n_compare = min(3, len(workouts) // 2)
+                    first_workouts = workouts[:n_compare]
+                    last_workouts = workouts[-n_compare:]
+                    
+                    early_calories_avg = sum(w.calories_burned for w in first_workouts) / n_compare
+                    recent_calories_avg = sum(w.calories_burned for w in last_workouts) / n_compare
+                    
+                    early_duration_avg = sum(w.duration for w in first_workouts) / n_compare
+                    recent_duration_avg = sum(w.duration for w in last_workouts) / n_compare
+                    
+                    calories_change = ((recent_calories_avg - early_calories_avg) / early_calories_avg * 100 
+                                     if early_calories_avg > 0 else 0)
+                    duration_change = ((recent_duration_avg - early_duration_avg) / early_duration_avg * 100 
+                                     if early_duration_avg > 0 else 0)
+                    
+                    print(f"Early Calories Average: {early_calories_avg:.0f} kcal")
+                    print(f"Recent Calories Average: {recent_calories_avg:.0f} kcal")
+                    print(f"Calories Burn Change: {calories_change:+.1f}%")
+                    print(f"Early Duration Average: {early_duration_avg:.0f} min")
+                    print(f"Recent Duration Average: {recent_duration_avg:.0f} min")
+                    print(f"Duration Change: {duration_change:+.1f}%")
+            else:
+                print("Not enough workout data for trend analysis.")
+                print("Log more workouts to see trends over time.")
+        else:
+            print("No workout data available.")
+            print("Log workouts to see trend analysis.")
+            
+        # Analyze goals
+        if self.current_user.goals:
+            total_goals = len(self.current_user.goals)
+            completed_goals = sum(1 for g in self.current_user.goals if g.completed)
+            completion_rate = (completed_goals / total_goals) * 100 if total_goals > 0 else 0
+            active_goals = [g for g in self.current_user.goals if not g.completed]
+            
+            print("\n----- Goal Progress Summary -----")
+            print(f"Total Goals: {total_goals}")
+            print(f"Completed Goals: {completed_goals}")
+            print(f"Completion Rate: {completion_rate:.1f}%")
+            print(f"Active Goals: {len(active_goals)}")
+            
+            # Show active goals
+            if active_goals:
+                print("\nActive Goals:")
+                for goal in sorted(active_goals, 
+                                key=lambda g: datetime.datetime.strptime(g.deadline, "%Y-%m-%d")):
+                    print(f"• {goal.goal_type}: {goal.target_value} (Deadline: {goal.deadline})")
+        else:
+            print("\nNo goals set.")
+            print("Set fitness goals to track your progress.")
+            
+        # General recommendations
+        print("\n----- Recommendations -----")
+        print("• Maintain a consistent workout schedule for better results.")
+        print("• Balance cardio and strength training for overall fitness.")
+        print("• Set realistic goals and track your progress regularly.")
+        print("• Ensure proper nutrition and hydration to support your workouts.")
+        print("• Include rest days in your routine for recovery.")
+
 class SFMSApplication:
+    """
+    Main GUI application controller for the Smart Fitness Management System.
+    Manages navigation between screens and user authentication.
+    """
     def __init__(self, root):
         self.root = root
         self.root.title("Smart Fitness Management System")
@@ -862,7 +2056,12 @@ class ProfileFrame(tk.Frame):
         # Edit button
         edit_button = tk.Button(info_frame, text="Edit Profile", command=self.edit_profile, 
                               bg="#2196F3", fg="white", font=("Arial", 10), pady=5)
-        edit_button.pack(pady=20)
+        edit_button.pack(pady=(20, 5))
+        
+        # Delete button
+        delete_button = tk.Button(info_frame, text="Delete Profile", command=self.delete_profile, 
+                                bg="#f44336", fg="white", font=("Arial", 10), pady=5)
+        delete_button.pack(pady=(5, 20))
         
         # Right column - Stats
         stats_frame = tk.Frame(content_frame, bg="white")
@@ -1067,6 +2266,44 @@ class ProfileFrame(tk.Frame):
             
         except ValueError as e:
             messagebox.showerror("Error", "Please enter valid numbers for age, height and weight", parent=window)
+            
+    def delete_profile(self):
+        """Delete the current user's profile after confirmation"""
+        # Ask for confirmation
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            "Are you sure you want to delete your profile? This action cannot be undone.",
+            icon='warning'
+        )
+        
+        if not confirm:
+            return
+            
+        # Double-check with password confirmation for security
+        password = simpledialog.askstring(
+            "Password Confirmation", 
+            "Please enter your password to confirm account deletion:", 
+            show='*'
+        )
+        
+        if not password:
+            return
+            
+        # Verify password
+        if password != self.user.password:  # In a real app, use proper password verification
+            messagebox.showerror("Error", "Incorrect password. Profile not deleted.")
+            return
+            
+        # Delete the user
+        if self.data_manager.delete_user(self.user.username):
+            messagebox.showinfo("Success", "Your profile has been deleted successfully.")
+            # Return to login screen
+            for widget in self.winfo_toplevel().winfo_children():
+                widget.destroy()
+            # Get the controller (SFMSApplication instance) and call logout
+            self.master.master.logout_callback()
+        else:
+            messagebox.showerror("Error", "Failed to delete profile. Please try again.")
 
 class WorkoutFrame(tk.Frame):
     def __init__(self, parent, user, data_manager):
@@ -1199,6 +2436,7 @@ class WorkoutFrame(tk.Frame):
             
             actions_frame = tk.Frame(row_frame, bg=row_bg)
             actions_frame.grid(row=0, column=4, padx=10, pady=5, sticky=tk.W)
+            
             
             view_button = tk.Button(actions_frame, text="👁️", command=lambda w=workout: self.view_workout(w), 
                                   bg="#2196F3", fg="white", width=2, font=("Arial", 8))
@@ -1994,28 +3232,101 @@ class NutritionFrame(tk.Frame):
         fats_value = tk.Label(fats_row, text=f"{total_fats}g", font=("Arial", 10, "bold"), bg="white")
         fats_value.pack(side=tk.RIGHT)
         
-        # Nutrition tips
-        tips_frame = tk.LabelFrame(parent, text="Nutrition Tips", font=("Arial", 10, "bold"), 
-                                 bg="white", padx=10, pady=10)
-        tips_frame.pack(fill=tk.X, pady=(20, 5))
+        # Nutrition advice
+        advice_frame = tk.LabelFrame(parent, text="Personalized Nutrition Tips", font=("Arial", 10, "bold"), 
+                                   bg="white", padx=10, pady=10)
+        advice_frame.pack(fill=tk.X, pady=(20, 5))
         
-        tips = [
-            "Aim for a balanced diet with proteins, carbs, and healthy fats.",
-            "Stay hydrated by drinking at least 8 glasses of water daily.",
-            "Include a variety of fruits and vegetables in your meals.",
-            "Limit processed foods and added sugars."
-        ]
+        # Generate personalized advice based on macro intake
+        advice_list = self.generate_nutrition_advice(total_calories, total_proteins, total_carbs, total_fats)
         
-        for tip in tips:
-            tip_row = tk.Frame(tips_frame, bg="white")
+        for advice in advice_list:
+            tip_row = tk.Frame(advice_frame, bg="white")
             tip_row.pack(fill=tk.X, pady=5)
+            
             
             bullet = tk.Label(tip_row, text="•", font=("Arial", 10, "bold"), bg="white")
             bullet.pack(side=tk.LEFT, padx=(0, 5))
             
-            tip_text = tk.Label(tip_row, text=tip, font=("Arial", 9), bg="white", 
+            tip_text = tk.Label(tip_row, text=advice, font=("Arial", 9), bg="white", 
                               wraplength=250, justify=tk.LEFT)
             tip_text.pack(side=tk.LEFT, fill=tk.X)
+    
+    def generate_nutrition_advice(self, calories, proteins, carbs, fats):
+        """Generate personalized nutrition advice based on user's macro intake"""
+        advice = []
+        
+        # Weight in kg and height in cm used for calculations
+        weight_kg = self.user.weight
+        height_cm = self.user.height
+        age = self.user.age
+        gender = self.user.gender
+        
+        # Calculate BMR (Basal Metabolic Rate) using Mifflin-St Jeor Equation
+        if gender.lower() in ['male', 'm']:
+            bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) + 5
+        else:
+            bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) - 161
+        
+        # Assume moderate activity level (PAL 1.55)
+        tdee = bmr * 1.55  # Total Daily Energy Expenditure
+        
+        # Recommended macros distribution (standard values)
+        recommended_protein_g = 0.8 * weight_kg  # 0.8g per kg is minimum RDA
+        athlete_protein_g = 1.6 * weight_kg      # For active individuals
+        
+        # For active people who workout regularly
+        if len(self.user.workouts) > 0:
+            recommended_protein_g = athlete_protein_g
+        
+        # Macro recommendations (simplified)
+        ideal_carbs_pct = 50  # % of calories from carbs
+        ideal_protein_pct = 25  # % of calories from protein
+        ideal_fats_pct = 25  # % of calories from fat
+        
+        # Calculate actual percentages if calories exist
+        if calories > 0:
+            actual_protein_pct = (proteins * 4 / calories) * 100
+            actual_carbs_pct = (carbs * 4 / calories) * 100
+            actual_fats_pct = (fats * 9 / calories) * 100
+            
+            # Add advice based on current intake
+            
+            # Calorie advice
+            if calories < tdee * 0.7:
+                advice.append("Your calorie intake today appears low. Consider adding healthy snacks to reach your energy needs.")
+            elif calories > tdee * 1.2:
+                if len(self.user.goals) > 0 and any("weight loss" in g.goal_type.lower() for g in self.user.goals):
+                    advice.append("Your calorie intake is relatively high for weight loss. Consider reducing portion sizes slightly.")
+            
+            # Protein advice
+            if proteins < recommended_protein_g:
+                advice.append(f"Your protein intake is below recommendations ({recommended_protein_g:.0f}g). Consider adding lean proteins like chicken, fish, tofu, or legumes.")
+            elif actual_protein_pct < ideal_protein_pct - 5:
+                advice.append("Your protein intake is proportionally low. Try including protein in each meal.")
+            
+            # Carbs advice
+            if actual_carbs_pct > ideal_carbs_pct + 15:
+                advice.append("Your carbohydrate intake is higher than recommended. Focus on complex carbs like whole grains and reduce simple sugars.")
+            elif actual_carbs_pct < ideal_carbs_pct - 15:
+                advice.append("Your carbohydrate intake is low. Complex carbs provide important energy for your workouts.")
+            
+            # Fats advice
+            if actual_fats_pct > ideal_fats_pct + 10:
+                advice.append("Your fat intake is relatively high. Focus on healthy fats like avocados, nuts, and olive oil.")
+            elif actual_fats_pct < ideal_fats_pct - 10:
+                advice.append("Your fat intake is low. Healthy fats are essential for hormone production and vitamin absorption.")
+        
+        # General advice if not enough data
+        if not advice:
+            advice = [
+                "Aim for a balanced diet with proteins, carbs, and healthy fats.",
+                "Stay hydrated by drinking at least 8 glasses of water daily.",
+                "Include a variety of fruits and vegetables in your meals.",
+                "Limit processed foods and added sugars."
+            ]
+        
+        return advice
         
     def create_meal_log(self, parent):
         # Log title
