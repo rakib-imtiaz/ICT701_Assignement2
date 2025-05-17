@@ -6,7 +6,16 @@ import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sqlite3
-from tkcalendar import Calendar
+# Make tkcalendar optional
+try:
+    from tkcalendar import Calendar
+    has_tkcalendar = True
+except ImportError:
+    has_tkcalendar = False
+    # Define a simple fallback if tkcalendar isn't available
+    class Calendar:
+        def __init__(self, *args, **kwargs):
+            pass
 import re
 import hashlib
 
@@ -204,42 +213,52 @@ class DataManager:
             return user
         return None
 
-class FitnessModeSelector(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Smart Fitness Management System - Mode Selection")
-        self.geometry("400x200")
-        self.configure(bg="#f0f0f0")
+class FitnessModeSelector:
+    def __init__(self, root):  # root is now a mandatory argument
+        self.root = root
+        
+        self.root.title("Smart Fitness Management System - Mode Selection")
+        self.root.geometry("400x200")
+        self.root.configure(bg="#f0f0f0")
+        
+        # Clear any existing widgets
+        for widget in self.root.winfo_children():
+            widget.destroy()
+            
         self.center_window()
         
-        label = tk.Label(self, text="Select Interface Mode", font=("Arial", 16, "bold"), bg="#f0f0f0")
+        label = tk.Label(self.root, text="Select Interface Mode", font=("Arial", 16, "bold"), bg="#f0f0f0")
         label.pack(pady=20)
         
-        gui_button = tk.Button(self, text="GUI Mode", command=self.launch_gui, 
+        gui_button = tk.Button(self.root, text="GUI Mode", command=self.launch_gui, 
                             width=15, height=2, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
         gui_button.pack(pady=5)
         
-        text_button = tk.Button(self, text="Text Mode", command=self.launch_text, 
+        text_button = tk.Button(self.root, text="Text Mode", command=self.launch_text, 
                              width=15, height=2, bg="#2196F3", fg="white", font=("Arial", 10, "bold"))
         text_button.pack(pady=5)
-        
+    
     def center_window(self):
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
         
     def launch_gui(self):
-        self.destroy()
-        app = SFMSApplication()
-        app.mainloop()
+        self.root.destroy()
+        root = tk.Tk()
+        app = SFMSApplication(root)
+        root.mainloop()
         
     def launch_text(self):
-        self.destroy()
+        self.root.destroy()
         # Launch text-based interface
         TextInterface().run()
+        
+    def mainloop(self):
+        self.root.mainloop()
 
 class TextInterface:
     def __init__(self):
@@ -364,56 +383,69 @@ class TextInterface:
         
         # Additional functionality would be implemented here
 
-class SFMSApplication(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Smart Fitness Management System")
-        self.geometry("1200x700")
-        self.configure(bg="#f0f0f0")
+class SFMSApplication:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Smart Fitness Management System")
+        self.root.geometry("1200x700")
+        # Change background color to a nicer shade
+        self.root.configure(bg="#f5f7fa")
         self.center_window()
+        
+        # Clear any existing widgets
+        for widget in self.root.winfo_children():
+            widget.destroy()
+            
+        # Add application icon if available
+        try:
+            self.root.iconbitmap("fitness_icon.ico")
+        except:
+            pass  # Icon not found, continue without it
+            
+        # Set custom fonts
+        self.title_font = ("Helvetica", 16, "bold")
+        self.header_font = ("Helvetica", 14, "bold")
+        self.normal_font = ("Helvetica", 10)
+        self.small_font = ("Helvetica", 9)
         
         self.data_manager = DataManager()
         self.current_user = None
         
-        # Set application icon
-        try:
-            self.iconbitmap("fitness_icon.ico")
-        except:
-            pass  # Icon not found, continue without it
-        
         self.show_login_frame()
         
     def center_window(self):
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry('{}x{}+{}+{}'.format(width, height, x, y))
-        
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+    
     def show_login_frame(self):
         # Clear existing frames
-        for widget in self.winfo_children():
+        for widget in self.root.winfo_children():
             widget.destroy()
             
-        self.login_frame = LoginFrame(self, self.login_callback)
+        # Create frame in the root window, but pass self (the application) as the controller
+        self.login_frame = LoginFrame(self.root, self)
         self.login_frame.pack(fill=tk.BOTH, expand=True)
         
     def show_register_frame(self):
         # Clear existing frames
-        for widget in self.winfo_children():
+        for widget in self.root.winfo_children():
             widget.destroy()
             
-        self.register_frame = RegisterFrame(self, self.register_callback)
+        # Create frame in the root window, but pass self (the application) as the controller
+        self.register_frame = RegisterFrame(self.root, self)
         self.register_frame.pack(fill=tk.BOTH, expand=True)
         
     def show_main_app(self):
         # Clear existing frames
-        for widget in self.winfo_children():
+        for widget in self.root.winfo_children():
             widget.destroy()
             
         # Create main app components
-        self.main_frame = MainAppFrame(self, self.current_user, self.logout_callback)
+        self.main_frame = MainAppFrame(self.root, self.current_user, self.logout_callback)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         
     def login_callback(self, username, password):
@@ -456,54 +488,67 @@ class SFMSApplication(tk.Tk):
         self.show_login_frame()
 
 class LoginFrame(tk.Frame):
-    def __init__(self, parent, login_callback):
-        super().__init__(parent, bg="#f0f0f0")
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg="#f5f7fa")
         self.parent = parent
-        self.login_callback = login_callback
+        self.controller = controller  # Store the application controller
         
-        # Create a container frame
-        container = tk.Frame(self, bg="#ffffff", padx=40, pady=40)
+        container = tk.Frame(self, bg="#ffffff", padx=50, pady=50, 
+                           highlightbackground="#dddddd", highlightthickness=1)
         container.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        # Title
-        title_label = tk.Label(container, text="Smart Fitness Management System", 
-                              font=("Arial", 18, "bold"), bg="#ffffff")
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        logo_label = tk.Label(container, text="SFMS", font=("Arial", 36, "bold"), 
+                            fg="#4CAF50", bg="#ffffff")
+        logo_label.grid(row=0, column=0, columnspan=2, pady=(0, 5))
         
-        # Subtitle
+        title_label = tk.Label(container, text="Smart Fitness Management System", 
+                             font=("Arial", 16), fg="#2196F3", bg="#ffffff")
+        title_label.grid(row=1, column=0, columnspan=2, pady=(0, 30))
+        
         subtitle_label = tk.Label(container, text="Login to your account", 
                                 font=("Arial", 12), bg="#ffffff")
-        subtitle_label.grid(row=1, column=0, columnspan=2, pady=(0, 30))
+        subtitle_label.grid(row=2, column=0, columnspan=2, pady=(0, 30))
         
-        # Username
-        username_label = tk.Label(container, text="Username:", font=("Arial", 10), bg="#ffffff")
-        username_label.grid(row=2, column=0, sticky=tk.W, pady=(0, 10))
+        username_frame = tk.Frame(container, bg="#ffffff")
+        username_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W+tk.E, pady=(0, 15))
         
-        self.username_entry = tk.Entry(container, width=30, font=("Arial", 10))
-        self.username_entry.grid(row=2, column=1, pady=(0, 10), padx=(10, 0))
+        username_icon = tk.Label(username_frame, text="👤", font=("Arial", 12), bg="#ffffff")
+        username_icon.pack(side=tk.LEFT, padx=(0, 10))
         
-        # Password
-        password_label = tk.Label(container, text="Password:", font=("Arial", 10), bg="#ffffff")
-        password_label.grid(row=3, column=0, sticky=tk.W, pady=(0, 20))
+        username_label = tk.Label(username_frame, text="Username:", font=("Arial", 10), bg="#ffffff")
+        username_label.pack(side=tk.LEFT, padx=(0, 10))
         
-        self.password_entry = tk.Entry(container, width=30, show="*", font=("Arial", 10))
-        self.password_entry.grid(row=3, column=1, pady=(0, 20), padx=(10, 0))
+        self.username_entry = tk.Entry(username_frame, width=25, font=("Arial", 10), 
+                                     relief=tk.SOLID, bd=1)
+        self.username_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # Login button
+        password_frame = tk.Frame(container, bg="#ffffff")
+        password_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W+tk.E, pady=(0, 25))
+        
+        password_icon = tk.Label(password_frame, text="🔒", font=("Arial", 12), bg="#ffffff")
+        password_icon.pack(side=tk.LEFT, padx=(0, 10))
+        
+        password_label = tk.Label(password_frame, text="Password:", font=("Arial", 10), bg="#ffffff")
+        password_label.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.password_entry = tk.Entry(password_frame, width=25, show="*", font=("Arial", 10), 
+                                     relief=tk.SOLID, bd=1)
+        self.password_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
         login_button = tk.Button(container, text="Login", command=self.login, 
-                               width=10, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
-        login_button.grid(row=4, column=0, columnspan=2, pady=(0, 10))
+                              width=15, height=2, bg="#4CAF50", fg="white", 
+                              font=("Arial", 11, "bold"), bd=0, cursor="hand2")
+        login_button.grid(row=5, column=0, columnspan=2, pady=(0, 20))
         
-        # Register link
         register_frame = tk.Frame(container, bg="#ffffff")
-        register_frame.grid(row=5, column=0, columnspan=2, pady=(10, 0))
+        register_frame.grid(row=6, column=0, columnspan=2, pady=(10, 0))
         
         register_label = tk.Label(register_frame, text="Don't have an account?", 
-                                 font=("Arial", 10), bg="#ffffff")
+                                font=("Arial", 10), bg="#ffffff")
         register_label.pack(side=tk.LEFT)
         
         register_link = tk.Label(register_frame, text="Sign Up", font=("Arial", 10, "bold"), 
-                               fg="#2196F3", cursor="hand2", bg="#ffffff")
+                              fg="#2196F3", cursor="hand2", bg="#ffffff")
         register_link.pack(side=tk.LEFT, padx=(5, 0))
         register_link.bind("<Button-1>", self.show_register)
         
@@ -515,128 +560,105 @@ class LoginFrame(tk.Frame):
             messagebox.showerror("Login Failed", "Please enter both username and password")
             return
             
-        self.login_callback(username, password)
+        # Use the controller to call login_callback
+        self.controller.login_callback(username, password)
         
     def show_register(self, event=None):
-        self.parent.show_register_frame()
+        # Use the controller to navigate to register frame
+        self.controller.show_register_frame()
         
 class RegisterFrame(tk.Frame):
-    def __init__(self, parent, register_callback):
-        super().__init__(parent, bg="#f0f0f0")
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg="#f5f7fa")
         self.parent = parent
-        self.register_callback = register_callback
+        self.controller = controller  # Store the application controller
         
-        # Create scrollable frame
-        self.canvas = tk.Canvas(self, bg="#f0f0f0", highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, bg="#ffffff", padx=40, pady=40)
+        container_frame = tk.Frame(self, bg="#ffffff", padx=40, pady=30,
+                                highlightbackground="#dddddd", highlightthickness=1)
+        container_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
+        title_label = tk.Label(container_frame, text="Smart Fitness Management System", 
+                             font=("Arial", 18, "bold"), fg="#2196F3", bg="#ffffff")
+        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 15))
         
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-        
-        # Title
-        title_label = tk.Label(self.scrollable_frame, text="Smart Fitness Management System", 
-                              font=("Arial", 18, "bold"), bg="#ffffff")
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
-        
-        # Subtitle
-        subtitle_label = tk.Label(self.scrollable_frame, text="Create a new account", 
-                                font=("Arial", 12), bg="#ffffff")
+        subtitle_label = tk.Label(container_frame, text="Create a new account", 
+                               font=("Arial", 14), fg="#2c3e50",bg="#ffffff")
         subtitle_label.grid(row=1, column=0, columnspan=2, pady=(0, 30))
         
-        # Username
-        username_label = tk.Label(self.scrollable_frame, text="Username:", font=("Arial", 10), bg="#ffffff")
-        username_label.grid(row=2, column=0, sticky=tk.W, pady=(0, 10))
+        username_label = tk.Label(container_frame, text="Username:", font=("Arial", 10), bg="#ffffff")
+        username_label.grid(row=2, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.username_entry = tk.Entry(self.scrollable_frame, width=30, font=("Arial", 10))
-        self.username_entry.grid(row=2, column=1, pady=(0, 10), padx=(10, 0))
+        self.username_entry = tk.Entry(container_frame, width=30, font=("Arial", 10))
+        self.username_entry.grid(row=2, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Password
-        password_label = tk.Label(self.scrollable_frame, text="Password:", font=("Arial", 10), bg="#ffffff")
-        password_label.grid(row=3, column=0, sticky=tk.W, pady=(0, 10))
+        password_label = tk.Label(container_frame, text="Password:", font=("Arial", 10), bg="#ffffff")
+        password_label.grid(row=3, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.password_entry = tk.Entry(self.scrollable_frame, width=30, show="*", font=("Arial", 10))
-        self.password_entry.grid(row=3, column=1, pady=(0, 10), padx=(10, 0))
+        self.password_entry = tk.Entry(container_frame, width=30, show="*", font=("Arial", 10))
+        self.password_entry.grid(row=3, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Confirm Password
-        confirm_password_label = tk.Label(self.scrollable_frame, text="Confirm Password:", 
-                                       font=("Arial", 10), bg="#ffffff")
-        confirm_password_label.grid(row=4, column=0, sticky=tk.W, pady=(0, 10))
+        confirm_password_label = tk.Label(container_frame, text="Confirm Password:", 
+                                      font=("Arial", 10), bg="#ffffff")
+        confirm_password_label.grid(row=4, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.confirm_password_entry = tk.Entry(self.scrollable_frame, width=30, show="*", font=("Arial", 10))
-        self.confirm_password_entry.grid(row=4, column=1, pady=(0, 10), padx=(10, 0))
+        self.confirm_password_entry = tk.Entry(container_frame, width=30, show="*", font=("Arial", 10))
+        self.confirm_password_entry.grid(row=4, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Full Name
-        name_label = tk.Label(self.scrollable_frame, text="Full Name:", font=("Arial", 10), bg="#ffffff")
-        name_label.grid(row=5, column=0, sticky=tk.W, pady=(0, 10))
+        name_label = tk.Label(container_frame, text="Full Name:", font=("Arial", 10), bg="#ffffff")
+        name_label.grid(row=5, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.name_entry = tk.Entry(self.scrollable_frame, width=30, font=("Arial", 10))
-        self.name_entry.grid(row=5, column=1, pady=(0, 10), padx=(10, 0))
+        self.name_entry = tk.Entry(container_frame, width=30, font=("Arial", 10))
+        self.name_entry.grid(row=5, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Age
-        age_label = tk.Label(self.scrollable_frame, text="Age:", font=("Arial", 10), bg="#ffffff")
-        age_label.grid(row=6, column=0, sticky=tk.W, pady=(0, 10))
+        age_label = tk.Label(container_frame, text="Age:", font=("Arial", 10), bg="#ffffff")
+        age_label.grid(row=6, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.age_entry = tk.Entry(self.scrollable_frame, width=30, font=("Arial", 10))
-        self.age_entry.grid(row=6, column=1, pady=(0, 10), padx=(10, 0))
+        self.age_entry = tk.Entry(container_frame, width=30, font=("Arial", 10))
+        self.age_entry.grid(row=6, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Gender
-        gender_label = tk.Label(self.scrollable_frame, text="Gender:", font=("Arial", 10), bg="#ffffff")
-        gender_label.grid(row=7, column=0, sticky=tk.W, pady=(0, 10))
+        gender_label = tk.Label(container_frame, text="Gender:", font=("Arial", 10), bg="#ffffff")
+        gender_label.grid(row=7, column=0, sticky=tk.W, pady=(0, 12))
         
         self.gender_var = tk.StringVar(value="Male")
-        gender_frame = tk.Frame(self.scrollable_frame, bg="#ffffff")
-        gender_frame.grid(row=7, column=1, sticky=tk.W, pady=(0, 10), padx=(10, 0))
+        gender_frame = tk.Frame(container_frame, bg="#ffffff")
+        gender_frame.grid(row=7, column=1, sticky=tk.W, pady=(0, 12), padx=(10, 0))
         
         tk.Radiobutton(gender_frame, text="Male", variable=self.gender_var, value="Male", 
-                      bg="#ffffff").pack(side=tk.LEFT)
+                     bg="#ffffff").pack(side=tk.LEFT)
         tk.Radiobutton(gender_frame, text="Female", variable=self.gender_var, value="Female", 
-                      bg="#ffffff").pack(side=tk.LEFT, padx=(10, 0))
+                     bg="#ffffff").pack(side=tk.LEFT, padx=(10, 0))
         tk.Radiobutton(gender_frame, text="Other", variable=self.gender_var, value="Other", 
-                      bg="#ffffff").pack(side=tk.LEFT, padx=(10, 0))
+                     bg="#ffffff").pack(side=tk.LEFT, padx=(10, 0))
         
-        # Height
-        height_label = tk.Label(self.scrollable_frame, text="Height (cm):", font=("Arial", 10), bg="#ffffff")
-        height_label.grid(row=8, column=0, sticky=tk.W, pady=(0, 10))
+        height_label = tk.Label(container_frame, text="Height (cm):", font=("Arial", 10), bg="#ffffff")
+        height_label.grid(row=8, column=0, sticky=tk.W, pady=(0, 12))
         
-        self.height_entry = tk.Entry(self.scrollable_frame, width=30, font=("Arial", 10))
-        self.height_entry.grid(row=8, column=1, pady=(0, 10), padx=(10, 0))
+        self.height_entry = tk.Entry(container_frame, width=30, font=("Arial", 10))
+        self.height_entry.grid(row=8, column=1, pady=(0, 12), padx=(10, 0))
         
-        # Weight
-        weight_label = tk.Label(self.scrollable_frame, text="Weight (kg):", font=("Arial", 10), bg="#ffffff")
+        weight_label = tk.Label(container_frame, text="Weight (kg):", font=("Arial", 10), bg="#ffffff")
         weight_label.grid(row=9, column=0, sticky=tk.W, pady=(0, 20))
         
-        self.weight_entry = tk.Entry(self.scrollable_frame, width=30, font=("Arial", 10))
+        self.weight_entry = tk.Entry(container_frame, width=30, font=("Arial", 10))
         self.weight_entry.grid(row=9, column=1, pady=(0, 20), padx=(10, 0))
         
-        # Register button
-        register_button = tk.Button(self.scrollable_frame, text="Register", command=self.register, 
-                                  width=10, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
-        register_button.grid(row=10, column=0, columnspan=2, pady=(0, 10))
+        register_button = tk.Button(container_frame, text="Register", command=self.register, 
+                                 width=15, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"),
+                                 relief=tk.RAISED, bd=1)
+        register_button.grid(row=10, column=0, columnspan=2, pady=(5, 20))
         
-        # Login link
-        login_frame = tk.Frame(self.scrollable_frame, bg="#ffffff")
-        login_frame.grid(row=11, column=0, columnspan=2, pady=(10, 0))
+        login_frame = tk.Frame(container_frame, bg="#ffffff")
+        login_frame.grid(row=11, column=0, columnspan=2, pady=(0, 10))
         
         login_label = tk.Label(login_frame, text="Already have an account?", 
-                             font=("Arial", 10), bg="#ffffff")
+                            font=("Arial", 10), bg="#ffffff")
         login_label.pack(side=tk.LEFT)
         
         login_link = tk.Label(login_frame, text="Log In", font=("Arial", 10, "bold"), 
-                           fg="#2196F3", cursor="hand2", bg="#ffffff")
+                          fg="#2196F3", cursor="hand2", bg="#ffffff")
         login_link.pack(side=tk.LEFT, padx=(5, 0))
         login_link.bind("<Button-1>", self.show_login)
-        
+    
     def register(self):
         # Get form data
         username = self.username_entry.get().strip()
@@ -696,67 +718,64 @@ class RegisterFrame(tk.Frame):
         }
         
         # Call register callback
-        self.register_callback(user_data)
+        self.controller.register_callback(user_data)
         
     def show_login(self, event=None):
-        self.parent.show_login_frame()
+        # Use the controller to navigate back to login frame
+        self.controller.show_login_frame()
 
 class MainAppFrame(tk.Frame):
     def __init__(self, parent, user, logout_callback):
-        super().__init__(parent, bg="#f0f0f0")
+        super().__init__(parent, bg="#f5f7fa")
         self.parent = parent
         self.user = user
         self.logout_callback = logout_callback
         self.data_manager = DataManager()
-        
-        # Create sidebar and content area
         self.create_layout()
         
     def create_layout(self):
-        # Main container with two columns (sidebar and content)
-        self.main_container = tk.Frame(self, bg="#f0f0f0")
+        self.main_container = tk.Frame(self, bg="#f5f7fa")
         self.main_container.pack(fill=tk.BOTH, expand=True)
         
-        # Sidebar
-        self.sidebar = tk.Frame(self.main_container, bg="#2c3e50", width=200)
+        self.sidebar = tk.Frame(self.main_container, bg="#2c3e50", width=220)
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
-        self.sidebar.pack_propagate(False)  # Prevent sidebar from shrinking
+        self.sidebar.pack_propagate(False)
         
-        # Content area
-        self.content_area = tk.Frame(self.main_container, bg="#f0f0f0")
-        self.content_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.content_area = tk.Frame(self.main_container, bg="#ffffff", bd=0) # Changed to white background
+        self.content_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10) # Added padding
         
-        # Add sidebar items
         self.create_sidebar()
-        
-        # Default view is profile
         self.show_profile()
         
     def create_sidebar(self):
         # App title
-        title_label = tk.Label(self.sidebar, text="SFMS", font=("Arial", 20, "bold"), 
-                             bg="#2c3e50", fg="white", pady=20)
+        title_label = tk.Label(self.sidebar, text="SFMS", font=("Arial", 24, "bold"), 
+                             bg="#2c3e50", fg="white", pady=25)
         title_label.pack(fill=tk.X)
         
-        # User info
-        user_frame = tk.Frame(self.sidebar, bg="#2c3e50", pady=10)
+        # User info with better styling
+        user_frame = tk.Frame(self.sidebar, bg="#2c3e50", pady=15)
         user_frame.pack(fill=tk.X)
         
-        user_icon = tk.Label(user_frame, text="👤", font=("Arial", 24), bg="#2c3e50", fg="white")
+        user_icon = tk.Label(user_frame, text="👤", font=("Arial", 32), bg="#2c3e50", fg="white")
         user_icon.pack()
         
-        user_name = tk.Label(user_frame, text=self.user.name, font=("Arial", 10, "bold"), 
+        user_name = tk.Label(user_frame, text=self.user.name, font=("Arial", 12, "bold"), 
                            bg="#2c3e50", fg="white")
-        user_name.pack()
+        user_name.pack(pady=(5, 10))
         
-        # Menu items
+        # Add separator
+        sep = tk.Frame(self.sidebar, height=1, bg="#3d566e")
+        sep.pack(fill=tk.X, padx=15, pady=5)
+        
+        # Menu items with improved styling
         menu_items = [
-            ("Profile", self.show_profile),
-            ("Workouts", self.show_workouts),
-            ("Goals", self.show_goals),
-            ("Nutrition", self.show_nutrition),
-            ("Reports", self.show_reports),
-            ("Logout", self.logout_callback)
+            ("👤 Profile", self.show_profile),
+            ("🏋️‍♂️ Workouts", self.show_workouts),
+            ("🎯 Goals", self.show_goals),
+            ("🍎 Nutrition", self.show_nutrition),
+            ("📊 Reports", self.show_reports),
+            ("🚪 Logout", self.logout_callback)
         ]
         
         # Menu container
@@ -764,13 +783,13 @@ class MainAppFrame(tk.Frame):
         menu_container.pack(fill=tk.X, pady=20)
         
         for text, command in menu_items:
-            btn = tk.Button(menu_container, text=text, font=("Arial", 10), 
-                          bg="#2c3e50", fg="white", bd=0, pady=10,
+            btn = tk.Button(menu_container, text=text, font=("Arial", 11), 
+                          bg="#2c3e50", fg="white", bd=0, pady=12,
                           activebackground="#34495e", activeforeground="white", 
-                          highlightthickness=0, width=20, anchor=tk.W, padx=20,
-                          command=command)
+                          highlightthickness=0, width=20, anchor=tk.W, padx=25,
+                          command=command, cursor="hand2")
             btn.pack(fill=tk.X)
-            
+        
     def clear_content(self):
         # Clear all widgets from content area
         for widget in self.content_area.winfo_children():
@@ -798,21 +817,19 @@ class MainAppFrame(tk.Frame):
 
 class ProfileFrame(tk.Frame):
     def __init__(self, parent, user, data_manager):
-        super().__init__(parent, bg="#f0f0f0")
+        super().__init__(parent, bg="#f5f7fa") # Main background for the frame itself
         self.parent = parent
         self.user = user
         self.data_manager = data_manager
         
-        # Title
-        title_frame = tk.Frame(self, bg="#f0f0f0", pady=20)
-        title_frame.pack(fill=tk.X)
+        title_frame = tk.Frame(self, bg="#f5f7fa", pady=15) # pady adjusted
+        title_frame.pack(fill=tk.X, padx=20)
         
-        title_label = tk.Label(title_frame, text="Profile", font=("Arial", 18, "bold"), bg="#f0f0f0")
-        title_label.pack(side=tk.LEFT, padx=20)
+        title_label = tk.Label(title_frame, text="Profile", font=("Arial", 20, "bold"), fg="#2c3e50", bg="#f5f7fa") # colored title
+        title_label.pack(side=tk.LEFT)
         
-        # Content in two columns
-        content_frame = tk.Frame(self, bg="white", padx=20, pady=20)
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        content_frame = tk.Frame(self, bg="#ffffff", padx=20, pady=20) # White content box
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0,20))
         
         # Left column - User info
         info_frame = tk.Frame(content_frame, bg="white")
@@ -1053,44 +1070,36 @@ class ProfileFrame(tk.Frame):
 
 class WorkoutFrame(tk.Frame):
     def __init__(self, parent, user, data_manager):
-        super().__init__(parent, bg="#f0f0f0")
+        super().__init__(parent, bg="#f5f7fa")
         self.parent = parent
         self.user = user
         self.data_manager = data_manager
         self.custom_start_date = None
         self.custom_end_date = None
         
-        # Title
-        title_frame = tk.Frame(self, bg="#f0f0f0", pady=20)
-        title_frame.pack(fill=tk.X)
+        title_frame = tk.Frame(self, bg="#f5f7fa", pady=15)
+        title_frame.pack(fill=tk.X, padx=20)
         
-        title_label = tk.Label(title_frame, text="Workout Tracking", font=("Arial", 18, "bold"), bg="#f0f0f0")
-        title_label.pack(side=tk.LEFT, padx=20)
+        title_label = tk.Label(title_frame, text="Workout Tracking", font=("Arial", 20, "bold"), fg="#2c3e50", bg="#f5f7fa")
+        title_label.pack(side=tk.LEFT)
         
-        # Add workout button
         add_button = tk.Button(title_frame, text="Log New Workout", command=self.add_workout, 
-                             bg="#4CAF50", fg="white", font=("Arial", 10))
-        add_button.pack(side=tk.RIGHT, padx=20)
+                             bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), relief=tk.RAISED, bd=1)
+        add_button.pack(side=tk.RIGHT)
         
-        # Workout history frame
-        self.history_frame = tk.Frame(self, bg="white")
-        self.history_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        self.history_frame = tk.Frame(self, bg="#ffffff")
+        self.history_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0,20))
         
-        # Create filter options
         self.create_filter_options()
-        
-        # Create workout history table
         self.create_workout_table()
         
     def create_filter_options(self):
         filter_frame = tk.Frame(self.history_frame, bg="white", padx=20, pady=10)
         filter_frame.pack(fill=tk.X)
         
-        # Title
         filter_label = tk.Label(filter_frame, text="Filter Workouts:", font=("Arial", 12, "bold"), bg="white")
         filter_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 10), columnspan=6)
         
-        # Date range
         date_label = tk.Label(filter_frame, text="Date Range:", font=("Arial", 10), bg="white")
         date_label.grid(row=1, column=0, sticky=tk.W, pady=5, padx=(0, 10))
         
@@ -1100,12 +1109,10 @@ class WorkoutFrame(tk.Frame):
         date_dropdown.grid(row=1, column=1, pady=5, padx=(0, 20))
         date_dropdown.bind("<<ComboboxSelected>>", self.on_date_filter_change)
         
-        # Workout type
         type_label = tk.Label(filter_frame, text="Workout Type:", font=("Arial", 10), bg="white")
         type_label.grid(row=1, column=2, sticky=tk.W, pady=5, padx=(0, 10))
         
         self.type_var = tk.StringVar(value="All Types")
-        # Get unique workout types from user's workouts
         workout_types = ["All Types"]
         if self.user.workouts:
             workout_types.extend(list(set(w.workout_type for w in self.user.workouts)))
@@ -1113,22 +1120,18 @@ class WorkoutFrame(tk.Frame):
         type_dropdown.grid(row=1, column=3, pady=5, padx=(0, 20))
         type_dropdown.bind("<<ComboboxSelected>>", self.filter_workouts)
         
-        # Filter button
         filter_button = tk.Button(filter_frame, text="Apply Filters", command=self.filter_workouts, 
                                 bg="#2196F3", fg="white", font=("Arial", 10))
         filter_button.grid(row=1, column=4, pady=5, padx=(0, 10))
         
-        # Reset button
         reset_button = tk.Button(filter_frame, text="Reset", command=self.reset_filters, 
                                bg="#f44336", fg="white", font=("Arial", 10))
         reset_button.grid(row=1, column=5, pady=5)
         
     def create_workout_table(self):
-        # Table container
         table_frame = tk.Frame(self.history_frame, bg="white", padx=20, pady=10)
         table_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Table header
         header_frame = tk.Frame(table_frame, bg="#f5f5f5")
         header_frame.pack(fill=tk.X)
         
@@ -1140,7 +1143,6 @@ class WorkoutFrame(tk.Frame):
                                   bg="#f5f5f5", width=width//10, anchor=tk.W)
             header_label.grid(row=0, column=i, padx=10, pady=10, sticky=tk.W)
             
-        # Table content - scrollable
         self.table_canvas = tk.Canvas(table_frame, bg="white", highlightthickness=0)
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.table_canvas.yview)
         
@@ -1158,68 +1160,54 @@ class WorkoutFrame(tk.Frame):
         self.table_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # Populate with workouts
         self.populate_workout_table()
         
     def populate_workout_table(self, filtered_workouts=None):
-        # Clear existing rows
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
             
-        # Get workouts to display
         workouts = filtered_workouts if filtered_workouts is not None else self.user.workouts
         
-        # Sort workouts by date (most recent first)
         workouts = sorted(workouts, key=lambda w: datetime.datetime.strptime(w.date, "%Y-%m-%d"), reverse=True)
         
         if not workouts:
-            # Show empty message
             empty_label = tk.Label(self.scrollable_frame, text="No workouts found", 
                                  font=("Arial", 12), bg="white", fg="#666")
             empty_label.pack(pady=30)
             return
             
-        # Create rows for each workout
         for i, workout in enumerate(workouts):
             row_bg = "#f9f9f9" if i % 2 == 0 else "white"
             row_frame = tk.Frame(self.scrollable_frame, bg=row_bg)
             row_frame.pack(fill=tk.X)
             
-            # Date
             date_label = tk.Label(row_frame, text=workout.date, font=("Arial", 10), 
                                 bg=row_bg, width=15, anchor=tk.W)
             date_label.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
             
-            # Workout Type
             type_label = tk.Label(row_frame, text=workout.workout_type, font=("Arial", 10), 
                                 bg=row_bg, width=20, anchor=tk.W)
             type_label.grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
             
-            # Duration
             duration_label = tk.Label(row_frame, text=str(workout.duration), font=("Arial", 10), 
                                     bg=row_bg, width=12, anchor=tk.W)
             duration_label.grid(row=0, column=2, padx=10, pady=10, sticky=tk.W)
             
-            # Calories
             calories_label = tk.Label(row_frame, text=str(workout.calories_burned), font=("Arial", 10), 
                                     bg=row_bg, width=12, anchor=tk.W)
             calories_label.grid(row=0, column=3, padx=10, pady=10, sticky=tk.W)
             
-            # Actions (View/Edit/Delete)
             actions_frame = tk.Frame(row_frame, bg=row_bg)
             actions_frame.grid(row=0, column=4, padx=10, pady=5, sticky=tk.W)
             
-            # View button
             view_button = tk.Button(actions_frame, text="👁️", command=lambda w=workout: self.view_workout(w), 
                                   bg="#2196F3", fg="white", width=2, font=("Arial", 8))
             view_button.pack(side=tk.LEFT, padx=(0, 5))
             
-            # Edit button
             edit_button = tk.Button(actions_frame, text="✏️", command=lambda w=workout: self.edit_workout(w), 
                                   bg="#FF9800", fg="white", width=2, font=("Arial", 8))
             edit_button.pack(side=tk.LEFT, padx=(0, 5))
             
-            # Delete button
             delete_button = tk.Button(actions_frame, text="🗑️", command=lambda w=workout: self.delete_workout(w), 
                                     bg="#f44336", fg="white", width=2, font=("Arial", 8))
             delete_button.pack(side=tk.LEFT)
@@ -1553,11 +1541,13 @@ class WorkoutFrame(tk.Frame):
                                   form_window,
                                   workout if is_edit else None
                               ), 
-                              bg="#4CAF50", fg="white", font=("Arial", 10))
+                              bg="#4CAF50", fg="white", font=("Arial", 11),
+                              width=10, bd=0, padx=10, pady=5, cursor="hand2")
         save_button.pack(side=tk.RIGHT, padx=5)
         
         cancel_button = tk.Button(button_frame, text="Cancel", command=form_window.destroy, 
-                                bg="#f44336", fg="white", font=("Arial", 10))
+                                bg="#f44336", fg="white", font=("Arial", 11),
+                                width=10, bd=0, padx=10, pady=5, cursor="hand2")
         cancel_button.pack(side=tk.RIGHT, padx=5)
         
     def save_workout(self, date, workout_type, duration, calories, notes, window, existing_workout=None):
@@ -2220,109 +2210,122 @@ class NutritionFrame(tk.Frame):
         date_label = tk.Label(form_frame, text="Date:", font=("Arial", 10, "bold"), bg="white")
         date_label.grid(row=0, column=0, sticky=tk.W, pady=10)
         
-        date_var = tk.StringVar(value=meal.date if is_edit else datetime.datetime.now().strftime("%Y-%m-%d"))
+        # Use current date as default if adding new, otherwise use meal's date
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        date_var = tk.StringVar(value=meal.date if is_edit else today)
         date_entry = tk.Entry(form_frame, textvariable=date_var, font=("Arial", 10), width=15)
         date_entry.grid(row=0, column=1, sticky=tk.W, pady=10)
         
         date_format_label = tk.Label(form_frame, text="(YYYY-MM-DD)", font=("Arial", 8), fg="#666", bg="white")
         date_format_label.grid(row=0, column=2, sticky=tk.W, pady=10)
         
+        # Add date format example for clarity
+        date_example = tk.Label(form_frame, text="Example: 2023-10-25", font=("Arial", 7), fg="#888", bg="white")
+        date_example.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=(0, 5))
+        
         # Meal Type
         type_label = tk.Label(form_frame, text="Meal Type:", font=("Arial", 10, "bold"), bg="white")
-        type_label.grid(row=1, column=0, sticky=tk.W, pady=10)
+        type_label.grid(row=2, column=0, sticky=tk.W, pady=10)
         
         meal_types = ["Breakfast", "Lunch", "Dinner", "Snack"]
         
-        type_var = tk.StringVar(value=meal.meal_type if is_edit else "")
+        type_var = tk.StringVar(value=meal.meal_type if is_edit else meal_types[0])  # Default to Breakfast
         type_dropdown = ttk.Combobox(form_frame, textvariable=type_var, values=meal_types, width=13)
-        type_dropdown.grid(row=1, column=1, sticky=tk.W, pady=10)
+        type_dropdown.grid(row=2, column=1, sticky=tk.W, pady=10)
         
         # Meal Name
         name_label = tk.Label(form_frame, text="Meal Name:", font=("Arial", 10, "bold"), bg="white")
-        name_label.grid(row=2, column=0, sticky=tk.W, pady=10)
+        name_label.grid(row=3, column=0, sticky=tk.W, pady=10)
         
         name_var = tk.StringVar(value=meal.name if is_edit else "")
         name_entry = tk.Entry(form_frame, textvariable=name_var, font=("Arial", 10), width=20)
-        name_entry.grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=10)
+        name_entry.grid(row=3, column=1, columnspan=2, sticky=tk.W, pady=10)
         
         # Calories
         calories_label = tk.Label(form_frame, text="Calories:", font=("Arial", 10, "bold"), bg="white")
-        calories_label.grid(row=3, column=0, sticky=tk.W, pady=10)
+        calories_label.grid(row=4, column=0, sticky=tk.W, pady=10)
         
         calories_var = tk.StringVar(value=meal.calories if is_edit else "")
         calories_entry = tk.Entry(form_frame, textvariable=calories_var, font=("Arial", 10), width=10)
-        calories_entry.grid(row=3, column=1, sticky=tk.W, pady=10)
+        calories_entry.grid(row=4, column=1, sticky=tk.W, pady=10)
         
         calories_unit = tk.Label(form_frame, text="kcal", font=("Arial", 9), bg="white")
-        calories_unit.grid(row=3, column=2, sticky=tk.W, pady=10)
+        calories_unit.grid(row=4, column=2, sticky=tk.W, pady=10)
         
         # Protein
         protein_label = tk.Label(form_frame, text="Protein:", font=("Arial", 10, "bold"), bg="white")
-        protein_label.grid(row=4, column=0, sticky=tk.W, pady=10)
+        protein_label.grid(row=5, column=0, sticky=tk.W, pady=10)
         
         protein_var = tk.StringVar(value=meal.proteins if is_edit else "")
         protein_entry = tk.Entry(form_frame, textvariable=protein_var, font=("Arial", 10), width=10)
-        protein_entry.grid(row=4, column=1, sticky=tk.W, pady=10)
+        protein_entry.grid(row=5, column=1, sticky=tk.W, pady=10)
         
         protein_unit = tk.Label(form_frame, text="grams", font=("Arial", 9), bg="white")
-        protein_unit.grid(row=4, column=2, sticky=tk.W, pady=10)
+        protein_unit.grid(row=5, column=2, sticky=tk.W, pady=10)
         
         # Carbs
         carbs_label = tk.Label(form_frame, text="Carbohydrates:", font=("Arial", 10, "bold"), bg="white")
-        carbs_label.grid(row=5, column=0, sticky=tk.W, pady=10)
+        carbs_label.grid(row=6, column=0, sticky=tk.W, pady=10)
         
         carbs_var = tk.StringVar(value=meal.carbs if is_edit else "")
         carbs_entry = tk.Entry(form_frame, textvariable=carbs_var, font=("Arial", 10), width=10)
-        carbs_entry.grid(row=5, column=1, sticky=tk.W, pady=10)
+        carbs_entry.grid(row=6, column=1, sticky=tk.W, pady=10)
         
         carbs_unit = tk.Label(form_frame, text="grams", font=("Arial", 9), bg="white")
-        carbs_unit.grid(row=5, column=2, sticky=tk.W, pady=10)
+        carbs_unit.grid(row=6, column=2, sticky=tk.W, pady=10)
         
         # Fats
         fats_label = tk.Label(form_frame, text="Fats:", font=("Arial", 10, "bold"), bg="white")
-        fats_label.grid(row=6, column=0, sticky=tk.W, pady=10)
+        fats_label.grid(row=7, column=0, sticky=tk.W, pady=10)
         
         fats_var = tk.StringVar(value=meal.fats if is_edit else "")
         fats_entry = tk.Entry(form_frame, textvariable=fats_var, font=("Arial", 10), width=10)
-        fats_entry.grid(row=6, column=1, sticky=tk.W, pady=10)
+        fats_entry.grid(row=7, column=1, sticky=tk.W, pady=10)
         
         fats_unit = tk.Label(form_frame, text="grams", font=("Arial", 9), bg="white")
-        fats_unit.grid(row=6, column=2, sticky=tk.W, pady=10)
+        fats_unit.grid(row=7, column=2, sticky=tk.W, pady=10)
         
-        # Buttons
+        # Buttons - complete rewrite with minimal styling
         button_frame = tk.Frame(form_window, bg="white")
-        button_frame.pack(fill=tk.X, padx=20, pady=20)
+        button_frame.pack(fill=tk.X, padx=20, pady=(15, 20))
         
-        save_button = tk.Button(button_frame, text="Save", 
-                              command=lambda: self.save_meal(
-                                  date_var.get(),
-                                  type_var.get(),
-                                  name_var.get(),
-                                  calories_var.get(),
-                                  protein_var.get(),
-                                  carbs_var.get(),
-                                  fats_var.get(),
-                                  form_window,
-                                  meal if is_edit else None
-                              ), 
-                              bg="#4CAF50", fg="white", font=("Arial", 10))
-        save_button.pack(side=tk.RIGHT, padx=5)
+        # Create simpler buttons with fixed height and width
+        save_button = tk.Button(
+            button_frame, 
+            text="Save", 
+            command=lambda: self.save_meal(
+                date_var.get(), type_var.get(), name_var.get(),
+                calories_var.get(), protein_var.get(), carbs_var.get(), fats_var.get(),
+                form_window, meal if is_edit else None
+            ), 
+            bg="#4CAF50", 
+            fg="white",
+            font=("Arial", 9),  # Smaller font
+            width=8,           # Fixed character width
+            height=1,          # Fixed character height
+            relief=tk.FLAT,    # Flat relief
+            bd=0               # No border
+        )
+        save_button.pack(side=tk.RIGHT, padx=10)
         
-        cancel_button = tk.Button(button_frame, text="Cancel", command=form_window.destroy, 
-                                bg="#f44336", fg="white", font=("Arial", 10))
+        cancel_button = tk.Button(
+            button_frame, 
+            text="Cancel", 
+            command=form_window.destroy,
+            bg="#f44336", 
+            fg="white",
+            font=("Arial", 9),  # Smaller font
+            width=8,           # Fixed character width
+            height=1,          # Fixed character height
+            relief=tk.FLAT,    # Flat relief 
+            bd=0               # No border
+        )
         cancel_button.pack(side=tk.RIGHT, padx=5)
         
     def save_meal(self, date, meal_type, name, calories, proteins, carbs, fats, window, existing_meal=None):
         # Validate inputs
-        if not date or not meal_type or not name or not calories or not proteins or not carbs or not fats:
+        if not date.strip() or not meal_type.strip() or not name.strip() or not calories or not proteins or not carbs or not fats:
             messagebox.showerror("Error", "All fields are required", parent=window)
-            return
-            
-        try:
-            # Validate date format
-            datetime.datetime.strptime(date, "%Y-%m-%d")
-        except ValueError:
-            messagebox.showerror("Error", "Date must be in YYYY-MM-DD format", parent=window)
             return
             
         try:
@@ -2361,9 +2364,25 @@ class NutritionFrame(tk.Frame):
             messagebox.showerror("Error", "Fats must be a number", parent=window)
             return
             
+        # Validate date format more carefully
+        try:
+            # Try to parse the date
+            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d")
+            
+            # Check if the parsed date makes sense (prevent dates like 2015-25-25)
+            if parsed_date.month > 12 or parsed_date.day > 31:
+                messagebox.showerror("Error", "Invalid date values. Please use format YYYY-MM-DD with valid month (1-12) and day values", parent=window)
+                return
+                
+            # Use the properly formatted date
+            formatted_date = parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror("Error", "Date must be in YYYY-MM-DD format (e.g., 2023-10-25)", parent=window)
+            return
+            
         if existing_meal:
             # Update existing meal
-            existing_meal.date = date
+            existing_meal.date = formatted_date
             existing_meal.meal_type = meal_type
             existing_meal.name = name
             existing_meal.calories = calories
@@ -2372,7 +2391,7 @@ class NutritionFrame(tk.Frame):
             existing_meal.fats = fats
         else:
             # Create new meal
-            new_meal = Meal(meal_type, name, calories, proteins, carbs, fats, date)
+            new_meal = Meal(meal_type, name, calories, proteins, carbs, fats, formatted_date)
             self.user.meals.append(new_meal)
             
         # Save to database
@@ -2393,8 +2412,34 @@ class NutritionFrame(tk.Frame):
         for widget in self.winfo_children():
             widget.destroy()
             
-        # Rebuild the frame
-        self.__init__(self.parent, self.user, self.data_manager)
+        # Recreate frame components properly
+        # Title
+        title_frame = tk.Frame(self, bg="#f0f0f0", pady=20)
+        title_frame.pack(fill=tk.X)
+        
+        title_label = tk.Label(title_frame, text="Nutrition Tracking", font=("Arial", 18, "bold"), bg="#f0f0f0")
+        title_label.pack(side=tk.LEFT, padx=20)
+        
+        # Add meal button
+        add_button = tk.Button(title_frame, text="Log New Meal", command=self.add_meal, 
+                             bg="#4CAF50", fg="white", font=("Arial", 10))
+        add_button.pack(side=tk.RIGHT, padx=20)
+        
+        # Create container for nutrition content
+        content_frame = tk.Frame(self, bg="white")
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Create left panel (nutrition summary) and right panel (meal log)
+        left_panel = tk.Frame(content_frame, bg="white", width=300)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 10))
+        left_panel.pack_propagate(False)
+        
+        right_panel = tk.Frame(content_frame, bg="white")
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        
+        # Create summary and meal log
+        self.create_nutrition_summary(left_panel)
+        self.create_meal_log(right_panel)
 
 # Reports class to be continued in next edit
 
@@ -2443,12 +2488,7 @@ class ReportFrame(tk.Frame):
         range_options = ["Last 7 Days", "Last 30 Days", "Last 3 Months", "Last Year", "All Time"]
         range_dropdown = ttk.Combobox(options_frame, textvariable=self.time_range_var, values=range_options, width=15)
         range_dropdown.grid(row=0, column=1, pady=10, padx=(0, 20))
-        range_dropdown.bind("<<ComboboxSelected>>", self.update_fitness_report)
-        
-        # Generate button
-        generate_button = tk.Button(options_frame, text="Generate Report", command=self.update_fitness_report, 
-                                  bg="#4CAF50", fg="white", font=("Arial", 10))
-        generate_button.grid(row=0, column=2, pady=10)
+        range_dropdown.bind("<<ComboboxSelected>>", self.update_fitness_report) # Re-bind combobox
         
         # Container for report content
         self.fitness_report_frame = tk.Frame(parent, bg="white")
@@ -2458,6 +2498,7 @@ class ReportFrame(tk.Frame):
         self.generate_fitness_report()
         
     def update_fitness_report(self, event=None):
+        print("DEBUG: update_fitness_report called") # Diagnostic print
         # Clear current report
         for widget in self.fitness_report_frame.winfo_children():
             widget.destroy()
@@ -2466,6 +2507,10 @@ class ReportFrame(tk.Frame):
         self.generate_fitness_report()
         
     def generate_fitness_report(self):
+        # Clear current report content first
+        for widget in self.fitness_report_frame.winfo_children():
+            widget.destroy()
+
         # Get time range
         time_range = self.time_range_var.get()
         
@@ -2488,9 +2533,9 @@ class ReportFrame(tk.Frame):
         
         if not workouts:
             # No data message
-            no_data = tk.Label(self.fitness_report_frame, text="No workout data found for the selected time range.", 
-                             font=("Arial", 12), fg="#666", bg="white")
-            no_data.pack(pady=50)
+            no_data_label = tk.Label(self.fitness_report_frame, text="No workout data found for the selected time range.", 
+                                     font=("Arial", 12), fg="#666", bg="white")
+            no_data_label.pack(pady=50)
             return
             
         # Summary stats
@@ -2505,11 +2550,11 @@ class ReportFrame(tk.Frame):
         avg_duration = total_duration / total_workouts if total_workouts > 0 else 0
         
         # Workout types
-        workout_types = {}
+        workout_types_data = {}
         for workout in workouts:
-            workout_types[workout.workout_type] = workout_types.get(workout.workout_type, 0) + 1
+            workout_types_data[workout.workout_type] = workout_types_data.get(workout.workout_type, 0) + 1
             
-        most_common_type = max(workout_types.items(), key=lambda x: x[1])[0] if workout_types else "N/A"
+        most_common_type = max(workout_types_data.items(), key=lambda x: x[1])[0] if workout_types_data else "N/A"
         
         # Display summary stats
         stats = [
@@ -2533,7 +2578,7 @@ class ReportFrame(tk.Frame):
             
         # Charts
         charts_frame = tk.Frame(self.fitness_report_frame, bg="white")
-        charts_frame.pack(fill=tk.BOTH, expand=True)
+        charts_frame.pack(fill=tk.X, expand=False, pady=(10,0))
         
         # Left chart: Workout type distribution
         left_chart_frame = tk.Frame(charts_frame, bg="white")
@@ -2543,7 +2588,7 @@ class ReportFrame(tk.Frame):
                                   font=("Arial", 10, "bold"), bg="white")
         left_chart_title.pack(pady=(0, 10))
         
-        self.create_pie_chart(left_chart_frame, workout_types)
+        self.create_pie_chart(left_chart_frame, workout_types_data) # Use workout_types_data
         
         # Right chart: Calories burned over time
         right_chart_frame = tk.Frame(charts_frame, bg="white")
@@ -2558,11 +2603,11 @@ class ReportFrame(tk.Frame):
     def create_pie_chart(self, parent, workout_types):
         if not workout_types:
             no_data = tk.Label(parent, text="No data available", font=("Arial", 10), fg="#666", bg="white")
-            no_data.pack(pady=50)
+            no_data.pack(pady=20, padx=10)
             return
             
-        # Create matplotlib figure
-        fig = plt.Figure(figsize=(4, 3), dpi=100)
+        # Create matplotlib figure with smaller size
+        fig = plt.Figure(figsize=(2.6, 2.2), dpi=75) # Further reduced size
         ax = fig.add_subplot(111)
         
         # Create pie chart
@@ -2580,11 +2625,11 @@ class ReportFrame(tk.Frame):
     def create_line_chart(self, parent, workouts):
         if not workouts:
             no_data = tk.Label(parent, text="No data available", font=("Arial", 10), fg="#666", bg="white")
-            no_data.pack(pady=50)
+            no_data.pack(pady=20, padx=10)
             return
             
-        # Create matplotlib figure
-        fig = plt.Figure(figsize=(4, 3), dpi=100)
+        # Create matplotlib figure with smaller size
+        fig = plt.Figure(figsize=(2.6, 2.2), dpi=75) # Further reduced size
         ax = fig.add_subplot(111)
         
         # Aggregate calories by date
@@ -2597,13 +2642,23 @@ class ReportFrame(tk.Frame):
         sorted_dates = sorted(calories_by_date.keys())
         calories = [calories_by_date[date] for date in sorted_dates]
         
-        # Plot line chart
-        ax.plot(sorted_dates, calories, marker='o', linestyle='-')
+        # If too many dates, show only a subset
+        if len(sorted_dates) > 10:
+            step = len(sorted_dates) // 5
+            display_dates = sorted_dates[::step]
+            display_indices = [sorted_dates.index(date) for date in display_dates]
+            ax.plot(range(len(sorted_dates)), calories, marker='o', linestyle='-', markersize=3)
+            ax.set_xticks([i for i in display_indices])
+            ax.set_xticklabels([sorted_dates[i] for i in display_indices], rotation=45, fontsize=7)
+        else:
+            ax.plot(range(len(sorted_dates)), calories, marker='o', linestyle='-', markersize=3)
+            ax.set_xticks(range(len(sorted_dates)))
+            ax.set_xticklabels(sorted_dates, rotation=45, fontsize=7)
         
         # Format chart
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Calories Burned')
-        ax.tick_params(axis='x', rotation=45)
+        ax.set_xlabel('Date', fontsize=8)
+        ax.set_ylabel('Calories Burned', fontsize=8)
+        ax.tick_params(axis='both', labelsize=7)
         ax.grid(True, linestyle='--', alpha=0.7)
         
         # Adjust layout
@@ -2628,12 +2683,7 @@ class ReportFrame(tk.Frame):
         range_dropdown = ttk.Combobox(options_frame, textvariable=self.nutrition_range_var, 
                                     values=range_options, width=15)
         range_dropdown.grid(row=0, column=1, pady=10, padx=(0, 20))
-        range_dropdown.bind("<<ComboboxSelected>>", self.update_nutrition_report)
-        
-        # Generate button
-        generate_button = tk.Button(options_frame, text="Generate Report", command=self.update_nutrition_report, 
-                                  bg="#4CAF50", fg="white", font=("Arial", 10))
-        generate_button.grid(row=0, column=2, pady=10)
+        range_dropdown.bind("<<ComboboxSelected>>", self.update_nutrition_report) # Re-bind combobox
         
         # Container for report content
         self.nutrition_report_frame = tk.Frame(parent, bg="white")
@@ -2643,6 +2693,7 @@ class ReportFrame(tk.Frame):
         self.generate_nutrition_report()
         
     def update_nutrition_report(self, event=None):
+        print("DEBUG: update_nutrition_report called") # Diagnostic print
         # Clear current report
         for widget in self.nutrition_report_frame.winfo_children():
             widget.destroy()
@@ -2651,6 +2702,10 @@ class ReportFrame(tk.Frame):
         self.generate_nutrition_report()
         
     def generate_nutrition_report(self):
+        # Clear current report content first
+        for widget in self.nutrition_report_frame.winfo_children():
+            widget.destroy()
+
         # Get time range
         time_range = self.nutrition_range_var.get()
         
@@ -2671,9 +2726,9 @@ class ReportFrame(tk.Frame):
         
         if not meals:
             # No data message
-            no_data = tk.Label(self.nutrition_report_frame, text="No meal data found for the selected time range.", 
-                             font=("Arial", 12), fg="#666", bg="white")
-            no_data.pack(pady=50)
+            no_data_label = tk.Label(self.nutrition_report_frame, text="No meal data found for the selected time range.", 
+                                     font=("Arial", 12), fg="#666", bg="white")
+            no_data_label.pack(pady=50)
             return
             
         # Summary stats
@@ -2682,25 +2737,25 @@ class ReportFrame(tk.Frame):
         summary_frame.pack(fill=tk.X, pady=(0, 20))
         
         # Calculate summary stats
-        total_meals = len(meals)
-        total_calories = sum(m.calories for m in meals)
-        total_protein = sum(m.proteins for m in meals)
-        total_carbs = sum(m.carbs for m in meals)
-        total_fats = sum(m.fats for m in meals)
+        total_meals_count = len(meals)
+        total_calories_val = sum(m.calories for m in meals)
+        total_protein_val = sum(m.proteins for m in meals)
+        total_carbs_val = sum(m.carbs for m in meals)
+        total_fats_val = sum(m.fats for m in meals)
         
-        avg_calories = total_calories / total_meals if total_meals > 0 else 0
-        avg_protein = total_protein / total_meals if total_meals > 0 else 0
-        avg_carbs = total_carbs / total_meals if total_meals > 0 else 0
-        avg_fats = total_fats / total_meals if total_meals > 0 else 0
-        
+        avg_calories_per_meal = total_calories_val / total_meals_count if total_meals_count > 0 else 0
+        # avg_protein_per_meal = total_protein_val / total_meals_count if total_meals_count > 0 else 0 # Not used in original detailed view
+        # avg_carbs_per_meal = total_carbs_val / total_meals_count if total_meals_count > 0 else 0 # Not used
+        # avg_fats_per_meal = total_fats_val / total_meals_count if total_meals_count > 0 else 0 # Not used
+
         # Display summary stats
         stats = [
-            ("Total Meals:", str(total_meals)),
-            ("Total Calories:", f"{total_calories} kcal"),
-            ("Avg. Calories per Meal:", f"{avg_calories:.1f} kcal"),
-            ("Total Protein:", f"{total_protein:.1f} g"),
-            ("Total Carbs:", f"{total_carbs:.1f} g"),
-            ("Total Fats:", f"{total_fats:.1f} g")
+            ("Total Meals:", str(total_meals_count)),
+            ("Total Calories:", f"{total_calories_val} kcal"),
+            ("Avg. Calories per Meal:", f"{avg_calories_per_meal:.1f} kcal"),
+            ("Total Protein:", f"{total_protein_val:.1f} g"),
+            ("Total Carbs:", f"{total_carbs_val:.1f} g"),
+            ("Total Fats:", f"{total_fats_val:.1f} g")
         ]
         
         # Create stats grid
@@ -2727,12 +2782,14 @@ class ReportFrame(tk.Frame):
         left_chart_title.pack(pady=(0, 10))
         
         # Create macronutrient distribution pie chart
-        macros = {
-            "Protein": total_protein * 4,  # 4 calories per gram
-            "Carbs": total_carbs * 4,      # 4 calories per gram
-            "Fats": total_fats * 9         # 9 calories per gram
+        macros_data = {
+            "Protein": total_protein_val * 4 if total_protein_val else 0,  # 4 calories per gram
+            "Carbs": total_carbs_val * 4 if total_carbs_val else 0,      # 4 calories per gram
+            "Fats": total_fats_val * 9 if total_fats_val else 0         # 9 calories per gram
         }
-        self.create_pie_chart(left_chart_frame, macros)
+        # Filter out zero values to prevent pie chart errors
+        macros_data = {k: v for k, v in macros_data.items() if v > 0}
+        self.create_pie_chart(left_chart_frame, macros_data) # Pass macros_data
         
         # Calories over time chart
         right_chart_frame = tk.Frame(charts_frame, bg="white")
@@ -2748,11 +2805,11 @@ class ReportFrame(tk.Frame):
     def create_nutrition_line_chart(self, parent, meals):
         if not meals:
             no_data = tk.Label(parent, text="No data available", font=("Arial", 10), fg="#666", bg="white")
-            no_data.pack(pady=50)
+            no_data.pack(pady=20, padx=10)
             return
             
-        # Create matplotlib figure
-        fig = plt.Figure(figsize=(4, 3), dpi=100)
+        # Create matplotlib figure with smaller size
+        fig = plt.Figure(figsize=(2.6, 2.2), dpi=75) # Further reduced size
         ax = fig.add_subplot(111)
         
         # Aggregate calories by date
@@ -2765,13 +2822,23 @@ class ReportFrame(tk.Frame):
         sorted_dates = sorted(calories_by_date.keys())
         calories = [calories_by_date[date] for date in sorted_dates]
         
-        # Plot line chart
-        ax.plot(sorted_dates, calories, marker='o', linestyle='-', color='orange')
+        # If too many dates, show only a subset
+        if len(sorted_dates) > 10:
+            step = len(sorted_dates) // 5
+            display_dates = sorted_dates[::step]
+            display_indices = [sorted_dates.index(date) for date in display_dates]
+            ax.plot(range(len(sorted_dates)), calories, marker='o', linestyle='-', color='orange', markersize=3)
+            ax.set_xticks([i for i in display_indices])
+            ax.set_xticklabels([sorted_dates[i] for i in display_indices], rotation=45, fontsize=7)
+        else:
+            ax.plot(range(len(sorted_dates)), calories, marker='o', linestyle='-', color='orange', markersize=3)
+            ax.set_xticks(range(len(sorted_dates)))
+            ax.set_xticklabels(sorted_dates, rotation=45, fontsize=7)
         
         # Format chart
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Calories Consumed')
-        ax.tick_params(axis='x', rotation=45)
+        ax.set_xlabel('Date', fontsize=8)
+        ax.set_ylabel('Calories Consumed', fontsize=8)
+        ax.tick_params(axis='both', labelsize=7)
         ax.grid(True, linestyle='--', alpha=0.7)
         
         # Adjust layout
@@ -2974,10 +3041,29 @@ class ReportFrame(tk.Frame):
                               wraplength=700, justify=tk.LEFT, anchor=tk.W)
             rec_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+# Fix the main function to prevent duplicate windows
 def main():
-    # Create and run the application
-    app = FitnessModeSelector()
-    app.mainloop()
+    # Create the main Tkinter window instance FIRST
+    root = tk.Tk()
+
+    # Now, apply styling
+    try:
+        from tkinter import ttk
+        style = ttk.Style() # This will now use the existing 'root' if it needs a root context
+        style.theme_use('clam')  # 'clam', 'alt', 'default', 'classic'
+        
+        # Configure ttk styles
+        style.configure("TButton", font=("Arial", 10))
+        style.configure("TEntry", padding=5)
+        style.configure("TCombobox", padding=5)
+    except:
+        pass  # Continue if styling fails
+    
+    # Initialize the first screen/mode selector with this root
+    app = FitnessModeSelector(root)
+    
+    # Start the Tkinter event loop
+    app.mainloop() # This calls self.root.mainloop() via FitnessModeSelector.mainloop
 
 if __name__ == "__main__":
     main()
