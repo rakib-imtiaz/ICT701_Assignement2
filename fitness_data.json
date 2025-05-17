@@ -1,86 +1,78 @@
 {
-    "noman": {
-        "username": "noman",
-        "password": "12345",
-        "name": "htdchchj",
-        "age": 23,
+    "demo": {
+        "username": "demo",
+        "password": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+        "name": "Demo User",
+        "age": 30,
         "gender": "Male",
-        "height": 145.0,
-        "weight": 92.0,
+        "height": 175.0,
+        "weight": 70.0,
         "goals": [
             {
-                "goal_type": "Distance Run",
-                "target_value": "56",
-                "deadline": "2025-06-16",
-                "start_date": "2025-05-17",
+                "goal_type": "Weight Loss",
+                "target_value": "Lose 5 kg",
+                "deadline": "2023-12-31",
+                "start_date": "2023-10-01",
                 "completed": false
-            }
-        ],
-        "workouts": [
-            {
-                "workout_type": "Walking",
-                "duration": 78,
-                "calories_burned": 129,
-                "date": "2025-05-17",
-                "notes": "mydfhdfjy"
-            }
-        ],
-        "meals": [
-            {
-                "meal_type": "Lunch",
-                "name": "dfgh",
-                "calories": 45,
-                "proteins": 56.0,
-                "carbs": 56.0,
-                "fats": 657.0,
-                "date": "2025-05-17"
             },
             {
-                "meal_type": "Dinner",
-                "name": "jjjh",
-                "calories": 125,
-                "proteins": 250.0,
-                "carbs": 250.0,
-                "fats": 52.0,
-                "date": "2025-05-17"
-            }
-        ]
-    },
-    "rakib": {
-        "username": "rakib",
-        "password": "12345",
-        "name": "sdsdsd",
-        "age": 34,
-        "gender": "Male",
-        "height": 123.0,
-        "weight": 34.0,
-        "goals": [
-            {
-                "goal_type": "Workouts Per Week",
-                "target_value": "45",
-                "deadline": "2025-06-16",
-                "start_date": "2025-05-17",
-                "completed": false
+                "goal_type": "Running",
+                "target_value": "5 km under 25 minutes",
+                "deadline": "2023-11-30",
+                "start_date": "2023-10-01",
+                "completed": true
             }
         ],
         "workouts": [
             {
-                "workout_type": "Swimming",
-                "duration": 22,
-                "calories_burned": 222,
-                "date": "2025-05-17",
-                "notes": ""
+                "workout_type": "Running",
+                "duration": 30,
+                "calories_burned": 300,
+                "date": "2023-10-15",
+                "notes": "Easy morning run"
+            },
+            {
+                "workout_type": "Strength",
+                "duration": 45,
+                "calories_burned": 400,
+                "date": "2023-10-16",
+                "notes": "Upper body workout"
+            },
+            {
+                "workout_type": "Cycling",
+                "duration": 60,
+                "calories_burned": 500,
+                "date": "2023-10-17",
+                "notes": "Evening bike ride"
             }
         ],
         "meals": [
             {
                 "meal_type": "Breakfast",
-                "name": "sdsds",
-                "calories": 1132,
-                "proteins": 22.0,
-                "carbs": 22.0,
-                "fats": 22.0,
-                "date": "2025-05-17"
+                "name": "Oatmeal with fruit",
+                "calories": 350,
+                "proteins": 12,
+                "carbs": 45,
+                "fats": 10,
+                "date": "2023-10-15"
+            },
+            {
+                "meal_type": "Lunch",
+                "name": "Chicken salad",
+                "calories": 450,
+                "proteins": 35,
+                "carbs": 15,
+                "fats": 20,
+                "date": "2023-10-15"
+            },
+            {
+                "meal_type": "Dinner",
+                "name": "Salmon with vegetables",
+                "calories": 550,
+                "proteins": 40,
+                "carbs": 20,
+                "fats": 25,
+                "date": "2023-10-15"
             }
         ]
     }

@@ -2,32 +2,24 @@
 Smart Fitness Management System (SFMS)
 ICT701 Assignment 4
 
-A comprehensive fitness tracking application with both GUI and Text interfaces.
-Features include user profiles, workout tracking, nutrition monitoring,
-goal setting, and performance analytics.
+Main entry point for the Smart Fitness Management System application.
+Launches the mode selector for choosing between GUI and text interfaces.
 
 Author: Emon
 Student ID: 20031890
 Date: October 2023
 """
 
-# This file serves as a compatibility wrapper around the new modular structure
-# It imports from the refactored modules but maintains the original entry point
-
 import tkinter as tk
 import logging
 import sys
-
-# Import from modular structure
-from models import User, Workout, Meal, Goal
-from data_manager import DataManager
-from cli import FitnessModeSelector, TextInterface
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
+        logging.FileHandler("sfms.log"),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -44,6 +36,9 @@ def main():
     root = tk.Tk()
     root.title("Smart Fitness Management System")
     
+    # Import here to avoid circular imports
+    from cli import FitnessModeSelector
+    
     # Initialize the mode selector
     app = FitnessModeSelector(root)
     
@@ -52,4 +47,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() 
